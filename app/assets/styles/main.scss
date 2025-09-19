@@ -1,0 +1,11 @@
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  body{
+    margin: 0;
+  }
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
