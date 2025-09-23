@@ -6,5 +6,8 @@ export default defineNuxtConfig({
   css: [
     "~/assets/styles/main.scss"
   ],
-  modules: ['@nuxt/fonts']
+  modules: ['@nuxt/fonts', 'convex-nuxt'],
+  convex: {
+    url: process.env.CONVEX_URL
+  },
 })
