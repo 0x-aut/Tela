@@ -15,8 +15,12 @@ const goToSignup = () => {
   <div class="default-layout">
     <nav>
       <div class="auth-actions-wrapper">
-        <button class="auth1" @click="goToLogin">Log in</button>
-        <button class="auth2" @click="goToSignup">Create an account</button>
+        <button class="auth1" @click="goToLogin">
+          <span class="geist-medium">Log in</span>
+        </button>
+        <button class="auth2" @click="goToSignup">
+          <span class="geist-medium">Create an account</span>
+        </button>
       </div>
     </nav>
     <div class="body">
@@ -55,6 +59,10 @@ const goToSignup = () => {
         width: fit-content;
         padding: 0px 15px;
         border-radius: 30px;
+        span {
+          font-size: 15px;
+          letter-spacing: -0.8px;
+        }
       }
       .auth1 {
         background: #2C2C2C;

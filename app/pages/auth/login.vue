@@ -13,56 +13,38 @@ useSeoMeta({
         <div class="logo-container">
           <SvgLogoText />
         </div>
-        <label class="anon">Log in to your account</label>
+        <label class="anon">
+          <span class="geist-regular">Log in to your account</span>
+        </label>
         <form>
           <div class="input-form">
-            <label for="name">
-              Name
-            </label>
-            <input
-              placeholder="Enter your fullname"
-              type="text"
-              name="name"
-              required
-            />
-          </div>
-          <div class="input-form">
             <label for="email">
-              Email
+              <span class="geist-regular">Email</span>
             </label>
             <input
               placeholder="Enter your email"
               type="email"
               name="email"
+              class="geist-medium"
               required
             />
           </div>
           <div class="input-form">
             <label for="password">
-              Password
+              <span class="geist-regular">Password</span>
             </label>
             <input
               placeholder="Enter your password"
               type="password"
               name="password"
               required
-            />
-          </div>
-          <div class="input-form">
-            <label for="confirmpassword">
-              Confirm password
-            </label>
-            <input
-              placeholder="Confirm your password"
-              type="password"
-              name="confirmpassword"
-              required
+              class="geist-medium"
             />
           </div>
         </form>
         <div class="action-button-wrapper">
           <button class="action1">
-            Log in
+            <span class="geist-medium">Log in to your account</span>
           </button>
         </div>
       </div>
@@ -104,12 +86,22 @@ useSeoMeta({
         background: #2C2C2C;
         box-shadow: inset 1px 1px 2px 0.5px rgba(255, 255, 255, 0.1);
         // filter: drop-shadow(2px 4px 4px rgba(0, 0, 0, 0.5));
+        span {
+          font-size: 15px;
+          letter-spacing: -0.8px;
+        }
       }
       form {
         display: flex;
         flex-direction: column;
         row-gap: 15px;
         margin: 10px 0px 20px 0px;
+        label {
+          span {
+            font-size: 15px;
+            letter-spacing: -0.3px;
+          }
+        }
         div {
           display: flex;
           flex-direction: column;
@@ -123,6 +115,10 @@ useSeoMeta({
             border: 1px solid rgba(240, 240, 240, 0.2);
             // box-shadow: inset 1px 1px 2px 0.5px rgba(255, 255, 255, 0.1);
             padding: 5px 10px;
+            font-family: "geist-medium";
+            font-weight: normal;
+            font-size: 15px;
+            letter-spacing: -0.3px;
             transition: 0.2s ease-out;
             &:focus {
               border: 1px solid rgba(240, 240, 240, 1);
@@ -142,6 +138,10 @@ useSeoMeta({
           width: 250px;
           padding: 0px 10px;
           border-radius: 30px;
+          span {
+            font-size: 16px;
+            letter-spacing: -0.8px;
+          }
         }
         .action1 {
           background: #FFFFFF;

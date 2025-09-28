@@ -18,6 +18,7 @@
   "compilerOptions": {
     "types": ["@webgpu/types", "@types/node"],
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "lib": [
       "ESNext",
       "dom",

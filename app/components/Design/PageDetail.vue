@@ -8,7 +8,7 @@ import { PanelRight, ChevronRight, Plus } from 'lucide-vue-next';
     <div class="header-wrapper">
       <div class="logo-title">
         <div class="logo"></div>
-        <div class="design-title">First design</div>
+        <input class="design-title geist-medium" placeholder="First design" />
       </div>
       <button class="action-icon">
         <PanelRight
@@ -25,7 +25,7 @@ import { PanelRight, ChevronRight, Plus } from 'lucide-vue-next';
           :stroke-width="1"
           :color="'#F0F0F0'"
         />
-        <span>Pages</span>
+        <span class="geist-regular">Pages</span>
       </button>
       <button class="action-icon">
         <Plus
@@ -84,8 +84,15 @@ import { PanelRight, ChevronRight, Plus } from 'lucide-vue-next';
         border-radius: 4px;
       }
       .design-title {
+        all: unset;
+        width: 150px;
         font-size: 16px;
         font-weight: 500;
+        color: #FFFFFF;
+        font-family: 'geist-medium';
+      }
+      .design-title::placeholder {
+        font-family: 'geist-medium';
         color: #FFFFFF;
       }
     }

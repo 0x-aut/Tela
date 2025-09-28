@@ -16,15 +16,21 @@ useSeoMeta({
         <div class="logo-container">
           <SvgLogoText />
         </div>
-        <label class="anon">Public Alpha</label>
-        <h1 class="main-header">Design better in a fluid manner</h1>
-        <p class="sub-text">
+        <label class="anon geist-medium">
+          <span class="geist-regular">Public alpha</span>
+        </label>
+        <h1 class="main-header geist-medium">Design better in a fluid manner</h1>
+        <p class="sub-text geist-regular">
           Tela helps you design whatever you want better in a fluid pattern,
           giving you the collaborative flexibility when needed
         </p>
         <div class="action-button-wrapper">
-          <button class="action1">Get Started</button>
-          <button class="action2">Watch the demo</button>
+          <button class="action1">
+            <span class="geist-medium">Get started</span>
+          </button>
+          <button class="action2 geist-medium">
+            <span class="geist-medium">Watch the demo</span>
+          </button>
         </div>
       </div>
       <div class="svg-area">
@@ -34,7 +40,7 @@ useSeoMeta({
       <!-- We are going to use svg because it is better to manipulate with gsap or animejs -->
     </div>
     <div class="large-text-container">
-      <p>
+      <p class="geist-regular">
         Tela aims to collaboratively give you the ability to design fluidly and easily, this means building whatever you can imagine in a fluid manner, now with the help of AI right in your canvas
       </p>
     </div>
@@ -76,12 +82,13 @@ useSeoMeta({
       h1 {
         margin: 0;
         font-size: 48px;
-        font-family: Geist, sans-serif;
-        font-weight: medium;
+        letter-spacing: -2px;
       }
       p {
         margin: 0;
         font-size: 24px;
+        font-weight: normal;
+        letter-spacing: -0.5px;
         opacity: 0.8;
       }
       .action-button-wrapper {
@@ -89,10 +96,15 @@ useSeoMeta({
         column-gap: 10px;
         button {
           all: unset;
+          cursor: pointer;
           height: 40px;
           width: fit-content;
           padding: 0px 15px;
           border-radius: 7.5px;
+          span {
+            font-size: 16px;
+            letter-spacing: -0.8px;
+          }
         }
         .action1 {
           background: #2C2C2C;
@@ -114,6 +126,7 @@ useSeoMeta({
       font-size: 42px;
       text-align: center;
       margin: 0;
+      letter-spacing: -1px;
     }
   }
 }

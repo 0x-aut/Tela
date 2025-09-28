@@ -1,5 +1,21 @@
 <script lang="ts" setup>
 import { ChevronDown, Plus } from 'lucide-vue-next';
+import { useActionStateStore } from '../../stores/actionstates';
+import { ActionState } from '../../shared/types/ActionState';
+
+
+const actionStateStore = useActionStateStore();
+
+// There will be another order magnitude emit here to go to the parent [id].vue
+const emit = defineEmits<{
+  (e: 'draw-frameRectangle', width: number, height: number): void,
+}>();
+
+const _drawFrameRectangle = (width: number, height: number) => {
+  emit('draw-frameRectangle', width, height);
+}
+
+
 </script>
 
 <template>
@@ -7,7 +23,7 @@ import { ChevronDown, Plus } from 'lucide-vue-next';
     <div class="account-share-header">
       <div class="profile-wrapper">
         <div class="profiles">
-          <div class="profile">M</div>
+          <div class="profile geist-medium">M</div>
         </div>
         <button class="profile-icon">
           <ChevronDown
@@ -18,14 +34,21 @@ import { ChevronDown, Plus } from 'lucide-vue-next';
         </button>
       </div>
       <button class="share-button">
-        <span>Share</span>
+        <span class="geist-medium">Share</span>
       </button>
     </div>
     <div class="element-type-wrapper">
-      <span class="element-text">Frame</span>
+      <span class="element-text geist-regular">{{ actionStateStore.action_state }}</span>
     </div>
+    <!-- In retrospect, it will be a component that changes so we can have the buttons work without doing too much -->
+    <div class="frame-wrapper wrapper-animation" v-if="actionStateStore.action_state == ActionState.FRAME">
+      <span class="geist-regular">Frames</span>
+      <PropertyFrame
+        @draw-frame-rectangle="_drawFrameRectangle"
+      />
+    </div> 
     <div class="export-wrapper">
-      <span class="export-text">Export</span>
+      <span class="export-text geist-regular">Export</span>
       <button class="export-button">
         <Plus
           :size="16"
@@ -38,6 +61,19 @@ import { ChevronDown, Plus } from 'lucide-vue-next';
 </template>
 
 <style lang="scss" scoped>
+.wrapper-animation {
+  animation: fadeIn 0.1s linear;
+}
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateX(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0px);
+  }
+}
 .element-properties-wrapper {
   border: 1px solid rgba(240,240,240,0.2);
   color: #FFFFFF;
@@ -71,7 +107,7 @@ import { ChevronDown, Plus } from 'lucide-vue-next';
           display: flex;
           align-items: center;
           justify-content: center;
-          font-weight: 600;
+          font-weight: normal;
           font-size: 16px;
           color: #FFFFFF;
         }
@@ -110,7 +146,17 @@ import { ChevronDown, Plus } from 'lucide-vue-next';
     padding: 10px 15px;
     border-bottom: 1px solid rgba(240,240,240,0.2);
     span {
-      font-size: 16px;
+      font-size: 15px;
+    }
+  }
+  .frame-wrapper {
+    width: stretch;
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+    padding: 10px 15px;
+    span {
+      font-size: 13px;
     }
   }
   .export-wrapper {
@@ -119,6 +165,9 @@ import { ChevronDown, Plus } from 'lucide-vue-next';
     justify-content: space-between;
     padding: 5px 10px 5px 15px;
     border-bottom: 1px solid rgba(240, 240, 240, 0.2);
+    .export-text {
+      font-size: 15px;
+    }
     .export-button {
       all: unset;
       cursor: pointer;
