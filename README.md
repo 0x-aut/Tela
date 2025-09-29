@@ -1,75 +1,11 @@
-# Nuxt Minimal Starter
-
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
-
-## Setup
-
-Make sure to install dependencies:
-
-```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+TODO:
+## -- TODAY --
+- Make canvas infinite - INPROGRESS
+- Make rectangle button edit the property INPROGRESS
+- Add Camera to the canvas (Kinda like infinite) - INPROGRESS
+- Create Shape class to save the shape in our backend and on storage
+- Enable Shape to be edited via normal edits like (H, W)
+- Add create account and login functionality on the pages to lead to the design with id page (for now) - INPROGRESS - HEAVY
+- Make the created account show in the page element properties via the clickable circle for collaboration
+- Ensure that accounts with edit access to the design page is shown in the profile circle with different colors for now.
+- Create animated text box for having the AI design feature. - INPROGRESS

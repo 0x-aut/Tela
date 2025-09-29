@@ -1,54 +1,173 @@
 <script lang="ts" setup>
 import { MousePointer2, Frame, Square, ChevronDown, Type, MessageCircle, Sparkles } from 'lucide-vue-next';
+import { ref, onMounted, onUnmounted } from 'vue';
+// import { definePageMeta } from '#imports'; We need to make this work without squiggly lines
+import { initializeWebGL } from '../../utils/webgl/initwebgl';
+import { setupBuffer } from '../../utils/webgl/setbuffer';
+import { resizeCanvas } from '../../utils/webgl/resizecanvas';
+import { 
+  createShader, createProgram,
+  getShaderLogs, getProgramLogs,
+  deleteShader, deleteProgram
+} from '../../utils/webgl/shaders';
+import { drawRectangle } from '../../utils/shapes/rectangle';
+import { updateUniforms } from '../../utils/webgl/render';
+import { Camera } from '../../utils/camera';
+import { useCameraInput } from '../../composables/useCameraInput';
+import { useDragHelper } from '../../utils/helpers/draghelper';
+import vertexshader from '../../utils/shadersglsl/webgl/vertexshader.vert?raw';
+import fragmentshader from '~/utils/shadersglsl/webgl/fragmentshader.frag?raw';
+import { useGlobalStore } from '../../stores/global';
+
+definePageMeta({
+  layout: "none",
+})
+
+const globalStore = useGlobalStore();
+var cursor_position = ref('0,0')
+const canvasref = ref<HTMLCanvasElement | null>(null);
+
+onMounted(() => {
+  const canvas = canvasref.value;
+  if (!canvas) {
+    throw new Error("Canvas not found")
+  }
+
+  // const camera = new Camera(canvas);
+  // useCameraInput(camera);
+
+  // Why cant i just put this in its own seperate file so that we can pass the canvas as a way to it?
+
+  const gl = initializeWebGL(canvas)
+
+  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
+  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
+  var program = createProgram(gl, vertexShader, fragmentShader);
+
+  const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+  const viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
+  // var colorLocation = gl.getUniformLocation(program, "u_color");
+
+
+  var translation = [300, 50];
+  var width = 200;
+  var height = 200;
+  const color = [0.9, 0.9, 0.9, 1];
+  
+
+  const render = () => {
+    resizeCanvas(gl.canvas);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.useProgram(program);
+    const vao = drawRectangle(gl, program, globalStore.translation[0]-width/2, globalStore.translation[1]-height/2, width, height);
+
+    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+    gl.bindVertexArray(vao);
+
+    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+    // Pass camera view matrix
+    // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
+
+    // gl.uniform4fv(colorLocation, color);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // Re-render on changes (add watch later for reactivity)
+    requestAnimationFrame(render);
+  };
+
+  const { cleanup } = useDragHelper(gl, program, render, {
+    shapeWidth: width,
+    shapeHeight: height,
+    shapePosX: globalStore.translation[0],
+    shapePosY: globalStore.translation[1]
+  });
+
+
+  render();
+
+  // onUnmounted(() => {
+  //   // gl.canvas.removeEventListener('mousemove', mousemove)
+  // })
+})
+
+const _drawFrameRectangle = (width: number, height: number) => {
+  const canvas = canvasref.value;
+  if (!canvas) return
+
+  const gl = initializeWebGL(canvas)
+
+  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
+  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
+  var program = createProgram(gl, vertexShader, fragmentShader);
+
+  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
+  // var colorLocation = gl.getUniformLocation(program, "u_color");
+
+  // var translation = [500, 70];
+  var width = width;
+  var height = height;
+  const color = [1, 1, 1, 1];
+  
+
+  const render = () => {
+    resizeCanvas(gl.canvas);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.useProgram(program);
+    const vao = drawRectangle(gl, program, globalStore.translation[0]-width/2, globalStore.translation[1]-height/2, width, height)
+
+    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+
+    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+    // Pass camera view matrix
+    // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
+
+    gl.bindVertexArray(vao);
+    // gl.uniform4fv(colorLocation, color); // This is to set color, will change later on to be more dynamic
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // Re-render on changes (add watch later for reactivity)
+    requestAnimationFrame(render);
+  };
+
+  const { cleanup } = useDragHelper(gl, program, render, {
+    shapeWidth: width,
+    shapeHeight: height,
+    shapePosX: globalStore.translation[0],
+    shapePosY: globalStore.translation[1]
+  });
+
+  render();
+
+}
+
 </script>
 
 <template>
   <main class="design-page">
-    <div class="actions-menu-wrapper">
-      <button title="Pointer" class="action-icon-container">
-        <MousePointer2
-          :size="20"
-          :stroke-width="1"
-        />
-      </button>
-      <button title="Frame" class="action-icon-container">
-        <Frame
-          :size="20"
-          :stroke-width="1"
-        />
-      </button>
-      <div class="action-icon-frame">
-        <button title="Rectangle" class="action-icon-container">
-          <Square
-            :size="20"
-            :stroke-width="1"
-          />
-        </button>
-        <button title="more" class="more-icon-container">
-          <ChevronDown 
-            :size="18"
-            :stroke-width="1"
-          />
-        </button>
-      </div>
-      <button title="Type" class="action-icon-container">
-        <Type
-          :size="20"
-          :stroke-width="1"
-        />
-      </button>
-      <button title="Type" class="action-icon-container">
-        <MessageCircle
-          :size="20"
-          :stroke-width="1"
-        />
-      </button>
-      <button title="Type" class="action-icon-container">
-        <Sparkles
-          :size="20"
-          :stroke-width="1"
-        />
-      </button>
+    <div class="page-details-part">
+      <DesignPageDetail />
+    </div>
+    <div class="element-property-part">
+      <DesignElementProperties
+        @draw-frameRectangle="_drawFrameRectangle"
+      />
+    </div>
+    <canvas
+      class="gfx-main" 
+      ref="canvasref" 
+      id="c"
+    ></canvas>
+    <div class="action-menu-part">
+      <DesignActionMenu />
     </div>
   </main>
 </template>
@@ -61,58 +180,36 @@ main {
   scrollbar-width: none;
   -ms-overflow-style: none;
   position: relative;
-  .actions-menu-wrapper {
+  .gfx-main {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #1E1E1E;
+  }
+  .action-menu-part {
     display: flex;
-    border: 1px solid rgba(240,240,240,0.2);
-    color: #FFFFFF;
-    background: #2C2C2C;
-    border-radius: 15px;
+    width: fit-content;
     position: fixed;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    box-shadow: inset 1px 1px 2px 0.5px rgba(255, 255, 255, 0.1);
-    filter: drop-shadow(2px 4px 4px rgba(0, 0, 0, 0.5));
-    height: 54px;
-    padding: 0 10px;
-    align-items: center;
     z-index: 100;
-    column-gap: 10px;
-
-    .action-icon-frame {
-      display: flex;
-      align-items: center;
-      column-gap: 0px;
-      .more-icon-container {
-        all: unset;
-        height: 36px;
-        border: 0px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 5px;
-
-        &:hover {
-          background-color: rgba(255, 255, 255, 0.1);
-        }
-      }
-    }
-
-    .action-icon-container {
-      all: unset;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      transition: background-color 0.2s ease-in-out;
-
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-      }
-    }
+  }
+  .page-details-part {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    height: fit-content;
+    width: fit-content;
+    z-index: 100;
+  }
+  .element-property-part {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    height: fit-content;
+    width: fit-content;
+    z-index: 100;
   }
 }
 main::-webkit-scrollbar {
