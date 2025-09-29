@@ -12,19 +12,22 @@ import {
 } from '../../utils/webgl/shaders';
 import { drawRectangle } from '../../utils/shapes/rectangle';
 import { updateUniforms } from '../../utils/webgl/render';
-import { Camera } from '../../utils/camera';
+import { Camera } from '../../utils/webgl/camera';
 import { useCameraInput } from '../../composables/useCameraInput';
 import { useDragHelper } from '../../utils/helpers/draghelper';
 import vertexshader from '../../utils/shadersglsl/webgl/vertexshader.vert?raw';
 import fragmentshader from '~/utils/shadersglsl/webgl/fragmentshader.frag?raw';
 import { useGlobalStore } from '../../stores/global';
+import { useShapeStore } from '../../stores/shapeStore';
+import { Shape } from '../../shared/types/ShapeTypes/Shape';
 
 definePageMeta({
   layout: "none",
 })
 
 const globalStore = useGlobalStore();
-var cursor_position = ref('0,0')
+const shapeStore = useShapeStore();
+var cursor_position = ref('0,0');
 const canvasref = ref<HTMLCanvasElement | null>(null);
 
 onMounted(() => {
@@ -53,41 +56,53 @@ onMounted(() => {
   var width = 200;
   var height = 200;
   const color = [0.9, 0.9, 0.9, 1];
-  
+  // globalStore.deleteTrans();
 
-  const render = () => {
-    resizeCanvas(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  console.log(`glob2: ${globalStore.translation[0]}, ${globalStore.translation[1]}`)
 
-    gl.useProgram(program);
-    const vao = drawRectangle(gl, program, globalStore.translation[0]-width/2, globalStore.translation[1]-height/2, width, height);
+  if (Object.keys(shapeStore.shapes).length > 0) {
+    console.log("Shapes exist")
+    console.log(shapeStore.shapes)
+    for (const key in shapeStore.shapes) {
+      const render = () => {
+        const shapeHeight = shapeStore.shapes[key].height;
+        const shapeWidth = shapeStore.shapes[key].width;
+        const shapeX = shapeStore.shapes[key].coordX;
+        const shapeY = shapeStore.shapes[key].coordY;
 
-    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
-    gl.bindVertexArray(vao);
+        resizeCanvas(gl.canvas);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+        gl.useProgram(program);
+        const vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
 
-    // Pass camera view matrix
-    // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
+        updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+        gl.bindVertexArray(vao);
 
-    // gl.uniform4fv(colorLocation, color);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 
-    // Re-render on changes (add watch later for reactivity)
-    requestAnimationFrame(render);
-  };
+        // Pass camera view matrix
+        // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
 
-  const { cleanup } = useDragHelper(gl, program, render, {
-    shapeWidth: width,
-    shapeHeight: height,
-    shapePosX: globalStore.translation[0],
-    shapePosY: globalStore.translation[1]
-  });
-
-
-  render();
+        // gl.uniform4fv(colorLocation, color);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(render);
+      }
+      render()
+      // const { cleanup } = useDragHelper(gl, program, render, {
+      //   shapeWidth: width,
+      //   shapeHeight: height,
+      //   shapePosX: globalStore.translation[0],
+      //   shapePosY: globalStore.translation[1]
+      // });
+    }
+    
+  } else {
+    console.log("No shapes to render")
+    console.log(shapeStore.shapes)
+  }
 
   // onUnmounted(() => {
   //   // gl.canvas.removeEventListener('mousemove', mousemove)
@@ -109,11 +124,10 @@ const _drawFrameRectangle = (width: number, height: number) => {
   // var colorLocation = gl.getUniformLocation(program, "u_color");
 
   // var translation = [500, 70];
-  var width = width;
-  var height = height;
   const color = [1, 1, 1, 1];
   
-
+  console.log(`Globs: ${globalStore.translation[0]}, ${globalStore.translation[1]}`)
+  console.log(globalStore.translation);
   const render = () => {
     resizeCanvas(gl.canvas);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -122,7 +136,6 @@ const _drawFrameRectangle = (width: number, height: number) => {
 
     gl.useProgram(program);
     const vao = drawRectangle(gl, program, globalStore.translation[0]-width/2, globalStore.translation[1]-height/2, width, height)
-
     updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
 
     gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
@@ -138,6 +151,8 @@ const _drawFrameRectangle = (width: number, height: number) => {
     requestAnimationFrame(render);
   };
 
+  // shapeStore.deleteAllShapes();
+
   const { cleanup } = useDragHelper(gl, program, render, {
     shapeWidth: width,
     shapeHeight: height,
@@ -145,7 +160,21 @@ const _drawFrameRectangle = (width: number, height: number) => {
     shapePosY: globalStore.translation[1]
   });
 
-  render();
+  try {
+    render();
+    console.log(`Coords: ${globalStore.translation[0]}, ${globalStore.translation[1]}`);
+    
+    shapeStore.addShape(new Shape(
+      "Rectangle",
+      height,
+      width,  
+      globalStore.translation[0],
+      globalStore.translation[1],
+    ));
+    console.log(shapeStore.shapes)
+  } catch(error: any) {
+    console.log("Error rendering shape: ", error.message)
+  }
 
 }
 

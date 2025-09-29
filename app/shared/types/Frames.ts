@@ -9,6 +9,7 @@ export const Frames = {
     "iPhone 16": [393, 852],
     "iPhone 16 Pro": [402, 874],
     "iPhone 16 Pro Max": [440, 956],
-    "Android Medium": [700, 840]
+    "Android Medium": [700, 840],
+    "Box": [300, 300],
   }
 }

@@ -1,5 +1,18 @@
 <script lang="ts" setup>
-import { PanelRight, ChevronRight, Plus } from 'lucide-vue-next';
+import { PanelRight, ChevronRight, Plus, Square } from 'lucide-vue-next';
+import { useShapeStore } from '../../stores/shapeStore';
+import { useActionStateStore } from '../../stores/actionstates';
+import { ActionState } from '../../shared/types/ActionState';
+
+
+const shapeStore = useShapeStore();
+const actionStore = useActionStateStore();
+
+const openShapeProperties = (shape_id: string) => {
+  actionStore.changeActionState(ActionState.DRAWSHAPE);
+}
+
+
 </script>
 
 
@@ -34,6 +47,23 @@ import { PanelRight, ChevronRight, Plus } from 'lucide-vue-next';
           :color="'#FFFFFF'"
         />
       </button>
+    </div>
+    <!-- There is no nesting feature for now -->
+    <div class="shapes">
+      <div class="shapes-list" v-for="(shape, id) in shapeStore.shapes" :key="id">
+        <button 
+          class="shape-view"
+          @click="openShapeProperties(id)"
+        >
+          <Square 
+            :size="13"
+            :stroke-width="1"
+            absoluteStrokeWidth
+            class="shape-icon"
+          />
+          <span class="geist-medium">{{ id }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -114,6 +144,46 @@ import { PanelRight, ChevronRight, Plus } from 'lucide-vue-next';
       // &:hover {
       //   text-decoration: underline;
       // }
+    }
+  }
+  .shapes {
+    display: flex;
+    flex-direction: column;
+    padding: 0px 10px;
+    margin-top: 10px;
+  }
+  .shapes-list {
+    display: flex;
+    .shape-view {
+      all: unset;
+      column-gap: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      width: stretch;
+      border-radius: 7.5px;
+      padding: 5px 10px;
+      transition: all 0.2s ease-out;
+      .shape-icon {
+        color: #FFFFFF;
+        opacity: 0.7;
+      }
+      span {
+        font-size: 13px;
+        opacity: 0.7;
+        display: flex;
+        align-items: center;
+        transition: 0.4s ease-out;
+      }
+      &:hover {
+        background: rgba(240, 240, 240, 0.1);
+        span {
+          opacity: 1;
+        }
+        .shape-icon {
+          opacity: 1;
+        }
+      }
     }
   }
 }

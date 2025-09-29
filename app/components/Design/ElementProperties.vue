@@ -46,6 +46,10 @@ const _drawFrameRectangle = (width: number, height: number) => {
       <PropertyFrame
         @draw-frame-rectangle="_drawFrameRectangle"
       />
+    </div>
+    <div class="shape-wrapper wrapper-animation" v-if="actionStateStore.action_state == ActionState.DRAWSHAPE">
+      <span class="geist-regular">Rectangle</span>
+      <PropertyShape />
     </div> 
     <div class="export-wrapper">
       <span class="export-text geist-regular">Export</span>
@@ -155,6 +159,12 @@ const _drawFrameRectangle = (width: number, height: number) => {
     flex-direction: column;
     row-gap: 10px;
     padding: 10px 15px;
+    span {
+      font-size: 13px;
+    }
+  }
+  .shape-wrapper {
+    border: 1px solid white;
     span {
       font-size: 13px;
     }
