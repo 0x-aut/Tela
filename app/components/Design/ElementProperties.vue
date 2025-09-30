@@ -9,10 +9,15 @@ const actionStateStore = useActionStateStore();
 // There will be another order magnitude emit here to go to the parent [id].vue
 const emit = defineEmits<{
   (e: 'draw-frameRectangle', width: number, height: number): void,
+  (e: 'editProperties', coordX: number, coordY: number, sizeWidth: number, sizeHeight: number): void,
 }>();
 
 const _drawFrameRectangle = (width: number, height: number) => {
   emit('draw-frameRectangle', width, height);
+}
+
+const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number) => {
+  emit('editProperties', coordX, coordY, sizeWidth, sizeHeight)
 }
 
 
@@ -47,8 +52,10 @@ const _drawFrameRectangle = (width: number, height: number) => {
         @draw-frame-rectangle="_drawFrameRectangle"
       />
     </div>
-    <div class="shape-wrapper wrapper-animation" v-if="actionStateStore.action_state == ActionState.DRAWSHAPE">
-      <PropertyShape />
+    <div class="shape-wrapper wrapper-animation" v-if="actionStateStore.action_state == ActionState.SHAPE">
+      <PropertyShape
+        @editProperties="editProperties"
+      />
     </div> 
     <div class="export-wrapper">
       <span class="export-text geist-regular">Export</span>

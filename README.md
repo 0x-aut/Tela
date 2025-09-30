@@ -13,8 +13,6 @@ TODO:
 - Create animated text box for having the AI design feature. - INPROGRESS
 
 
-Thoughts:
-Make all shapes draggable how?
-When creating a new shape we save the coords to the class
-When dragging we get the shape_id via the store 
-and edit the shape class from the store and rerender
+Thoughts
+- We want to be able to login to our design page right?
+- And save our design to convex and setup webhooks for convex using a dynamic link

@@ -3,17 +3,47 @@ import { Shape } from '../../Shared/types/ShapeTypes/Shape';
 import { useGlobalStore } from '../../stores/global';
 import { useActionStateStore } from '../../stores/actionstates';
 import { useShapeStore } from '../../stores/shapeStore';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { MoveHorizontal, MoveVertical } from 'lucide-vue-next';
 
+
+const emit = defineEmits<{
+  (e: 'editProperties', coordX: number, coordY: number, sizeWidth: number, sizeHeight: number): void
+}>(); // There's gotta be an easy way but we will use this for now
 
 const globalStore = useGlobalStore();
 const actionStore = useActionStateStore();
 const shapeStore = useShapeStore();
 
-var _coordX = ref("");
-var _coordY = ref("");
+var _coordX = ref<number>(0);
+var _coordY = ref<number>(0);
+var _sizeWidth = ref<number>(0);
+var _sizeHeight = ref<number>(0);
 
+const getShapeProperties = shapeStore.shapes[shapeStore.select_shape];
+if (!getShapeProperties) {
+  _coordX.value = 0;
+  _coordY.value = 0;
+  _sizeWidth.value = 0;
+  _sizeHeight.value = 0;
+} else {
+  _coordX.value = getShapeProperties.coordX;
+  _coordY.value = getShapeProperties.coordY;
+  _sizeWidth.value = getShapeProperties.width;
+  _sizeHeight.value = getShapeProperties.height;
+}
+
+// So we are actually going to pass it as an emit to the parent with the values
+const editProperties = () => {
+  emit('editProperties', _coordX.value, _coordY.value, _sizeWidth.value, _sizeHeight.value)
+}
+
+watch(shapeStore.shapes[shapeStore.select_shape], () => {
+  _coordX.value = getShapeProperties.coordX;
+  _coordY.value = getShapeProperties.coordY;
+  _sizeWidth.value = getShapeProperties.width;
+  _sizeHeight.value = getShapeProperties.height;
+})
 
 </script>
 
@@ -36,13 +66,13 @@ var _coordY = ref("");
           <label for="x">
           <span class="geist-regular">X</span>
           </label>
-          <input class="geist-medium" placeholder="300" type="text" v-model="_coordX" />
+          <input class="geist-medium" @keyup.enter="editProperties" placeholder="300" type="text" v-model="_coordX" />
         </div>
         <div class="coords-input-wrapper">
           <label for="x">
           <span class="geist-medium">Y</span>
           </label>
-          <input placeholder="300" type="text" v-model="_coordX" />
+          <input class="geist-medium" @keyup.enter="editProperties" placeholder="300" type="text" v-model="_coordY" />
         </div>
       </div>
       <div class="coords-wrapper">
@@ -50,7 +80,7 @@ var _coordY = ref("");
           <label for="resize">
           <span class="geist-regular">X</span>
           </label>
-          <input class="geist-regular" placeholder="90deg" type="text" v-model="_coordX" />
+          <input class="geist-regular" placeholder="90deg" type="text" />
         </div>
       </div>
     </div>
@@ -65,7 +95,7 @@ var _coordY = ref("");
             absoluteStrokeWidth
             class="input-icon"
           />
-          <input class="geist-medium" placeholder="300" type="text" v-model="_coordX" />
+          <input class="geist-medium" @keyup.enter="editProperties" placeholder="300" type="text" v-model="_sizeHeight" />
         </div>
         <div class="coords-input-wrapper">
           <MoveHorizontal
@@ -74,7 +104,7 @@ var _coordY = ref("");
             absoluteStrokeWidth
             class="input-icon"
           />
-          <input placeholder="300" type="text" v-model="_coordX" />
+          <input placeholder="300" @keyup.enter="editProperties" type="text" v-model="_sizeWidth" />
         </div>
       </div>
       <div class="coords-wrapper">

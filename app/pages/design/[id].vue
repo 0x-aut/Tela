@@ -221,6 +221,57 @@ const deleteShape = (id: string) => {
   }
 }
 
+const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number) => {
+  const canvas = canvasref.value
+  if (!canvas) return
+
+  const gl = initializeWebGL(canvas)
+
+  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
+  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
+  var program = createProgram(gl, vertexShader, fragmentShader);
+
+  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
+
+  shapeStore.editShape(shapeStore.select_shape, {
+    coordX: Number(coordX), coordY: Number(coordY),
+    width: Number(sizeWidth), height: Number(sizeHeight)
+  })
+
+  const shape = shapeStore.shapes[shapeStore.select_shape];
+
+  console.log("new shape")
+  console.log(shape)
+
+  const render = () => {
+    resizeCanvas(gl.canvas);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.useProgram(program);
+    const vao = drawRectangle(gl, program, shape.coordX-shape.width/2, shape.coordY-shape.height/2, shape.width, shape.height) // Center of the shape here
+    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+
+    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+    // Pass camera view matrix
+    // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
+
+    gl.bindVertexArray(vao);
+    // gl.uniform4fv(colorLocation, color); // This is to set color, will change later on to be more dynamic
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // Re-render on changes (add watch later for reactivity)
+    requestAnimationFrame(render);
+  };
+
+  render()
+  const { cleanup } = useDragHelper(gl, program, render);
+}
+
+
 </script>
 
 <template>
@@ -233,6 +284,7 @@ const deleteShape = (id: string) => {
     <div class="element-property-part">
       <DesignElementProperties
         @draw-frameRectangle="_drawFrameRectangle"
+        @editProperties="editProperties"
       />
     </div>
     <canvas

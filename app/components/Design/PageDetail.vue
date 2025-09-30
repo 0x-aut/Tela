@@ -12,14 +12,14 @@ const shapeStore = useShapeStore();
 const actionStore = useActionStateStore();
 
 const openShapeProperties = (shape_id: string) => {
-  actionStore.changeActionState(ActionState.DRAWSHAPE);
+  actionStore.changeActionState(ActionState.SHAPE);
+  shapeStore.selectShape(shape_id);
 }
 
 // We need to pass this as an emit since we need the render function basically
 const deleteShape = (id: string) => {
   emit('deleteShape', id)
 }
-
 
 </script>
 

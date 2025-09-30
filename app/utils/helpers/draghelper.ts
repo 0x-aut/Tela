@@ -47,7 +47,7 @@ export function useDragHelper(
     if(isDragging.value) {
       var coordX = mouseX;
       var coordY = mouseY;
-      shapeStore.editShapeCoords(_key.value, {coordX: coordX, coordY: coordY});
+      shapeStore.editShape(_key.value, {coordX: coordX, coordY: coordY});
       renderFunction()
     }
   }
