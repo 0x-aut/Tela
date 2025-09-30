@@ -15,8 +15,8 @@ var password = ref("");
 var confirm_password = ref("");
 
 const createAccount = async () => {
-  if (confirm_password !== password) {
-    alert("Not the same password");
+  if (confirm_password.value !== password.value) {
+    alert("Passwords do not match");
     return
   }
   const { data, error } = await signUp.email({
@@ -30,11 +30,13 @@ const createAccount = async () => {
     onSuccess: (ctx) => {
       //redirect to the dashboard or sign in page
       router.push("/design/1")
+      isLoading.value = false
     },
     onError: (ctx) => {
       // display the error message
       alert(ctx.error.message);
       console.log(ctx.error)
+      isLoading.value = false
     },
   });
 }
@@ -102,7 +104,7 @@ const createAccount = async () => {
           </div>
         </form>
         <div class="action-button-wrapper">
-          <button class="action1">
+          <button class="action1" @click="createAccount">
             <span class="geist-medium" v-if="isLoading === false">Create your account</span>
             <ReusablesLoader v-if="isLoading === true" />
           </button>
