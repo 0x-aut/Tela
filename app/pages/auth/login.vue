@@ -69,11 +69,12 @@ const logIn = async () => {
               name="password"
               required
               class="geist-medium"
+              v-model="password"
             />
           </div>
         </form>
         <div class="action-button-wrapper">
-          <button class="action1">
+          <button class="action1" @click="logIn">
             <span class="geist-medium" v-if="isLoading === false">Log in to your account</span>
             <ReusablesLoader v-if="isLoading === true" />
           </button>
