@@ -12,19 +12,22 @@ import {
 } from '../../utils/webgl/shaders';
 import { drawRectangle } from '../../utils/shapes/rectangle';
 import { updateUniforms } from '../../utils/webgl/render';
-import { Camera } from '../../utils/camera';
+import { Camera } from '../../utils/webgl/camera';
 import { useCameraInput } from '../../composables/useCameraInput';
 import { useDragHelper } from '../../utils/helpers/draghelper';
 import vertexshader from '../../utils/shadersglsl/webgl/vertexshader.vert?raw';
 import fragmentshader from '~/utils/shadersglsl/webgl/fragmentshader.frag?raw';
 import { useGlobalStore } from '../../stores/global';
+import { useShapeStore } from '../../stores/shapeStore';
+import { Shape } from '../../shared/types/ShapeTypes/Shape';
 
 definePageMeta({
   layout: "none",
 })
 
 const globalStore = useGlobalStore();
-var cursor_position = ref('0,0')
+const shapeStore = useShapeStore();
+var cursor_position = ref('0,0');
 const canvasref = ref<HTMLCanvasElement | null>(null);
 
 onMounted(() => {
@@ -36,8 +39,6 @@ onMounted(() => {
   // const camera = new Camera(canvas);
   // useCameraInput(camera);
 
-  // Why cant i just put this in its own seperate file so that we can pass the canvas as a way to it?
-
   const gl = initializeWebGL(canvas)
 
   var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
@@ -48,46 +49,47 @@ onMounted(() => {
   const viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
   // var colorLocation = gl.getUniformLocation(program, "u_color");
 
-
-  var translation = [300, 50];
-  var width = 200;
-  var height = 200;
   const color = [0.9, 0.9, 0.9, 1];
-  
+  // globalStore.deleteTrans();
 
-  const render = () => {
-    resizeCanvas(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  if (Object.keys(shapeStore.shapes).length > 0) {
+    console.log("Shapes exist")
+    console.log(shapeStore.shapes)
+    for (const key in shapeStore.shapes) {
+      const render = () => {
+        const shapeHeight = shapeStore.shapes[key].height;
+        const shapeWidth = shapeStore.shapes[key].width;
+        const shapeX = shapeStore.shapes[key].coordX;
+        const shapeY = shapeStore.shapes[key].coordY;
 
-    gl.useProgram(program);
-    const vao = drawRectangle(gl, program, globalStore.translation[0]-width/2, globalStore.translation[1]-height/2, width, height);
+        resizeCanvas(gl.canvas);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
-    gl.bindVertexArray(vao);
+        gl.useProgram(program);
+        const vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
 
-    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+        updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+        gl.bindVertexArray(vao);
 
-    // Pass camera view matrix
-    // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
+        gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 
-    // gl.uniform4fv(colorLocation, color);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+        // Pass camera view matrix
+        // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
 
-    // Re-render on changes (add watch later for reactivity)
-    requestAnimationFrame(render);
-  };
-
-  const { cleanup } = useDragHelper(gl, program, render, {
-    shapeWidth: width,
-    shapeHeight: height,
-    shapePosX: globalStore.translation[0],
-    shapePosY: globalStore.translation[1]
-  });
-
-
-  render();
+        // gl.uniform4fv(colorLocation, color);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(render);
+      }
+      render()
+      const { cleanup } = useDragHelper(gl, program, render);
+    }
+    
+  } else {
+    console.log("No shapes to render")
+    console.log(shapeStore.shapes)
+  }
 
   // onUnmounted(() => {
   //   // gl.canvas.removeEventListener('mousemove', mousemove)
@@ -108,21 +110,20 @@ const _drawFrameRectangle = (width: number, height: number) => {
   var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
   // var colorLocation = gl.getUniformLocation(program, "u_color");
 
-  // var translation = [500, 70];
-  var width = width;
-  var height = height;
   const color = [1, 1, 1, 1];
   
+
+  const windowWidthCenter = window.innerWidth / 2;
+  const windowHeightCenter = window.innerHeight / 2;
 
   const render = () => {
     resizeCanvas(gl.canvas);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     gl.useProgram(program);
-    const vao = drawRectangle(gl, program, globalStore.translation[0]-width/2, globalStore.translation[1]-height/2, width, height)
-
+    const vao = drawRectangle(gl, program, windowWidthCenter-width/2, windowHeightCenter-height/2, width, height) // Center of the shape here
     updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
 
     gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
@@ -138,27 +139,152 @@ const _drawFrameRectangle = (width: number, height: number) => {
     requestAnimationFrame(render);
   };
 
-  const { cleanup } = useDragHelper(gl, program, render, {
-    shapeWidth: width,
-    shapeHeight: height,
-    shapePosX: globalStore.translation[0],
-    shapePosY: globalStore.translation[1]
-  });
-
-  render();
+  try {
+    render();
+    const { cleanup } = useDragHelper(gl, program, render);
+    shapeStore.addShape(new Shape(
+      "Rectangle",
+      height,
+      width,  
+      windowWidthCenter,
+      windowHeightCenter,
+    ));
+    console.log(shapeStore.shapes)
+  } catch(error: any) {
+    console.log("Error rendering shape: ", error.message)
+  }
 
 }
+
+const deleteShape = (id: string) => {
+  const canvas = canvasref.value;
+  if (!canvas) return
+
+  const gl = initializeWebGL(canvas)
+
+  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
+  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
+  var program = createProgram(gl, vertexShader, fragmentShader);
+
+  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
+
+  shapeStore.removeShape(id)
+
+  if (Object.keys(shapeStore.shapes).length == 0) {
+    const rerender = () => {
+      resizeCanvas(gl.canvas);
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(program);
+      updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+      gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+      requestAnimationFrame(rerender);
+    }
+    rerender()
+  }
+
+  if (Object.keys(shapeStore.shapes).length > 0) {
+    console.log("Shapes exist")
+    console.log(shapeStore.shapes)
+    for (const key in shapeStore.shapes) {
+      const render = () => {
+        const shapeHeight = shapeStore.shapes[key].height;
+        const shapeWidth = shapeStore.shapes[key].width;
+        const shapeX = shapeStore.shapes[key].coordX;
+        const shapeY = shapeStore.shapes[key].coordY;
+
+        resizeCanvas(gl.canvas);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        gl.useProgram(program);
+        const vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
+
+        updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+        gl.bindVertexArray(vao);
+
+        gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+        // Pass camera view matrix
+        // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
+
+        // gl.uniform4fv(colorLocation, color);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(render);
+      }
+      render()
+      const { cleanup } = useDragHelper(gl, program, render);
+    }
+  }
+}
+
+const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number) => {
+  const canvas = canvasref.value
+  if (!canvas) return
+
+  const gl = initializeWebGL(canvas)
+
+  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
+  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
+  var program = createProgram(gl, vertexShader, fragmentShader);
+
+  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
+
+  shapeStore.editShape(shapeStore.select_shape, {
+    coordX: Number(coordX), coordY: Number(coordY),
+    width: Number(sizeWidth), height: Number(sizeHeight)
+  })
+
+  const shape = shapeStore.shapes[shapeStore.select_shape];
+
+  console.log("new shape")
+  console.log(shape)
+
+  const render = () => {
+    resizeCanvas(gl.canvas);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.useProgram(program);
+    const vao = drawRectangle(gl, program, shape.coordX-shape.width/2, shape.coordY-shape.height/2, shape.width, shape.height) // Center of the shape here
+    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+
+    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+    // Pass camera view matrix
+    // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
+
+    gl.bindVertexArray(vao);
+    // gl.uniform4fv(colorLocation, color); // This is to set color, will change later on to be more dynamic
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // Re-render on changes (add watch later for reactivity)
+    requestAnimationFrame(render);
+  };
+
+  render()
+  const { cleanup } = useDragHelper(gl, program, render);
+}
+
 
 </script>
 
 <template>
   <main class="design-page">
     <div class="page-details-part">
-      <DesignPageDetail />
+      <DesignPageDetail
+        @deleteShape="deleteShape"
+      />
     </div>
     <div class="element-property-part">
       <DesignElementProperties
         @draw-frameRectangle="_drawFrameRectangle"
+        @editProperties="editProperties"
       />
     </div>
     <canvas

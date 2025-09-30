@@ -9,11 +9,29 @@ export const useGlobalStore = defineStore(
       cursor_position.value = `${x}, ${y}`
     }
 
-    const translation = ref([0, 0])
+    const translation = ref<Array<number>>([0, 0]);
     function changeTranslation(x: number, y: number) {
       translation.value = [x, y];
+      console.log("translate store changed to: ")
+      console.log(translation.value[1])
     }
-    return { cursor_position, change_pos, translation, changeTranslation }
+
+    function deleteTrans() {
+      translation.value = [0, 0];
+    }
+
+    const camera_state = ref({
+      camFieldOfView: ref(60), // In degrees
+      camPosX: ref(0),
+      camPosY: ref(0),
+      camPosZ: ref(-200),
+      near: ref(1),
+      far: ref(2000)
+    }) // Ref is used for individual reactivity - will fact check and see perf hits later
+
+    function changeCameraState() {}
+
+    return { cursor_position, change_pos, translation, changeTranslation, deleteTrans }
   },
   {
     persist: true,

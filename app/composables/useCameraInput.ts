@@ -4,7 +4,7 @@ This file is created to handle the events for the camera movement.
 
 import { onMounted, onUnmounted } from "vue";
 import { ref } from "vue";
-import type { Camera } from "~/utils/camera";
+import type { Camera } from "../utils/webgl/camera";
 
 export const useCameraInput = (camera: Camera) => {
   let isDragging = false;
