@@ -11,3 +11,10 @@ TODO:
 - Make the created account show in the page element properties via the clickable circle for collaboration
 - Ensure that accounts with edit access to the design page is shown in the profile circle with different colors for now.
 - Create animated text box for having the AI design feature. - INPROGRESS
+
+
+Thoughts:
+Make all shapes draggable how?
+When creating a new shape we save the coords to the class
+When dragging we get the shape_id via the store 
+and edit the shape class from the store and rerender

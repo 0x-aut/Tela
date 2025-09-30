@@ -1,15 +1,23 @@
 <script lang="ts" setup>
-import { PanelRight, ChevronRight, Plus, Square } from 'lucide-vue-next';
+import { PanelRight, ChevronRight, Plus, Square, Trash } from 'lucide-vue-next';
 import { useShapeStore } from '../../stores/shapeStore';
 import { useActionStateStore } from '../../stores/actionstates';
 import { ActionState } from '../../shared/types/ActionState';
 
+const emit = defineEmits<{
+  (e: 'deleteShape', id: string): void
+}>();
 
 const shapeStore = useShapeStore();
 const actionStore = useActionStateStore();
 
 const openShapeProperties = (shape_id: string) => {
   actionStore.changeActionState(ActionState.DRAWSHAPE);
+}
+
+// We need to pass this as an emit since we need the render function basically
+const deleteShape = (id: string) => {
+  emit('deleteShape', id)
 }
 
 
@@ -51,18 +59,30 @@ const openShapeProperties = (shape_id: string) => {
     <!-- There is no nesting feature for now -->
     <div class="shapes">
       <div class="shapes-list" v-for="(shape, id) in shapeStore.shapes" :key="id">
-        <button 
+        <div 
           class="shape-view"
-          @click="openShapeProperties(id)"
         >
-          <Square 
-            :size="13"
-            :stroke-width="1"
-            absoluteStrokeWidth
-            class="shape-icon"
-          />
-          <span class="geist-medium">{{ id }}</span>
-        </button>
+          <button class="shape-it" @click="openShapeProperties(id)">
+            <Square 
+              :size="13"
+              :stroke-width="1"
+              absoluteStrokeWidth
+              class="shape-icon"
+            />
+            <span class="geist-medium">{{ id }}</span>
+          </button>
+          <button 
+            class="delete-button"
+            @click="deleteShape(id)"
+          >
+            <Trash
+              :size="13"
+              :stroke-width="1"
+              absoluteStrokeWidth
+              class="delete-icon"
+            />
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -156,7 +176,7 @@ const openShapeProperties = (shape_id: string) => {
     display: flex;
     .shape-view {
       all: unset;
-      column-gap: 10px;
+      justify-content: space-between;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -164,24 +184,44 @@ const openShapeProperties = (shape_id: string) => {
       border-radius: 7.5px;
       padding: 5px 10px;
       transition: all 0.2s ease-out;
-      .shape-icon {
-        color: #FFFFFF;
-        opacity: 0.7;
-      }
-      span {
-        font-size: 13px;
-        opacity: 0.7;
+      .shape-it {
+        all: unset;
+        width: stretch;
         display: flex;
         align-items: center;
-        transition: 0.4s ease-out;
+        column-gap: 10px;
+        .shape-icon {
+          color: #FFFFFF;
+          opacity: 0.7;
+        }
+        span {
+          font-size: 13px;
+          opacity: 0.7;
+          display: flex;
+          align-items: center;
+          transition: 0.4s ease-out;
+        }
+      }
+      .delete-button {
+        all: unset;
+        padding: 2.5px 5px;
+        border-radius: 2.5px;
+        cursor: pointer;
+        color: rgba(240, 240, 240, 0.1);
+        transition: 0.2s ease-in;
+        &:hover {
+          color: rgba(255, 255, 255, 1);
+        }
       }
       &:hover {
         background: rgba(240, 240, 240, 0.1);
-        span {
-          opacity: 1;
-        }
-        .shape-icon {
-          opacity: 1;
+        .shape-it {
+          span {
+            opacity: 1;
+          }
+          .shape-icon {
+            opacity: 1;
+          }
         }
       }
     }

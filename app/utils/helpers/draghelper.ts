@@ -1,6 +1,8 @@
 import { ref } from 'vue';
 import { updateUniforms } from '../webgl/render';
 import { useGlobalStore } from '../../stores/global';
+import { useShapeStore } from '../../stores/shapeStore'
+import type { Shape } from '~/shared/types/ShapeTypes/Shape';
 
 
 
@@ -10,7 +12,9 @@ export function useDragHelper(
   renderFunction:() => void,
   options: Record<any, any> = {}
 ) {
-  const globalStore = useGlobalStore()
+  const globalStore = useGlobalStore();
+  const shapeStore = useShapeStore();
+  const selected_shapes = ref<Record<string, Shape>>({}); //We could decide to only have one selected shape
   // We get position of retangle to drag
   const shapePosX = ref<number>(options.shapePosX);
   const shapePosY = ref<number>(options.shapePosY);
@@ -19,50 +23,115 @@ export function useDragHelper(
   const shapeHeight = ref<number>(options.shapeHeight);
   const shapeWidth = ref<number>(options.shapeWidth);
 
+  // We want to pass in the shapes record for all shapes
+  // When i hit box I will check through all shapes in the record
+  /*
+    A for loop is suboptimal as heck but we can stick with it? especially since there is no need to scale now?
+    Or we can filter the record if possible right? to only have the shapes in a new list with the necessary stuff
+  */
+
   // We want to make the drag function so we can drag
   // Drag function will change the positioning which we have to return
   const isDragging = ref<boolean>(false);
   const c_pos = ref("0,0") 
+  var _key = ref("")
 
   function mousemove(event) {
-    if (!isDragging.value) return
-    // First we get the mouse coordinates
     const mouseX = event.clientX;
     const mouseY = event.clientY;
-    globalStore.change_pos(mouseX, mouseY);
-    globalStore.changeTranslation(mouseX, mouseY);
-    renderFunction()
+    if (!isDragging.value) {
+      gl.canvas.style.cursor = "default";
+      globalStore.change_pos(mouseX, mouseY);
+      globalStore.changeTranslation(mouseX, mouseY);
+    } 
+    if(isDragging.value) {
+      var coordX = mouseX;
+      var coordY = mouseY;
+      shapeStore.editShapeCoords(_key.value, {coordX: coordX, coordY: coordY});
+      renderFunction()
+    }
+  }
+
+  function clearSelectedList() {
+    var _length = Object.keys(selected_shapes.value).length;
+    for (const key in selected_shapes.value) {
+      delete selected_shapes.value[key] // check this later
+    }
   }
 
   function mousedown(event) {
     const mouseX = event.clientX;
     const mouseY = event.clientY;
-    if (mouseX >= (shapePosX.value - shapeWidth.value/2) && mouseX <= shapePosX.value + (shapeWidth.value/2) &&
-      mouseY >= (shapePosY.value -shapeHeight.value/2) && mouseY <= shapePosY.value + (shapeHeight.value/2)) {
-        isDragging.value = true
-        gl.canvas.style.cursor = "pointer";
-        // alert(`shape pos: ${shapePosX.value} ${shapePosY.value}`)
-        // alert("clicked box")
-        console.log(`isDragging: ${isDragging.value}`)
-        newShapePosX.value = mouseX
-        newShapePosY.value = mouseY
-    } else {
-      isDragging.value = false
-      gl.canvas.style.cursor = "default"
-      // alert("clicked no box")
+
+    for (const key in shapeStore.shapes) {
+
+      if (!shapeStore.shapes[key]) {
+        console.log("Shapes from store has issues")
+        return
+      }
+
+      var shapeX = shapeStore.shapes[key].coordX;
+      var shapeY = shapeStore.shapes[key].coordY;
+      var shapeH = shapeStore.shapes[key].height;
+      var shapeW = shapeStore.shapes[key].height;
+
+
+      // We need to filter the shapes based on the positions here
+      // Because of the center of the shape
+      if ((mouseX >= (shapeX - shapeW/2)) && (mouseX <= (shapeX + shapeW/2)) && (mouseY >= (shapeY - shapeH/2)) && (mouseY <= (shapeY + shapeH/2))) {
+        selected_shapes.value[key] = shapeStore.shapes[key]
+      }
     }
-    // alert(`isdrag: ${isDragging.value}`)
-    // alert(`mouse pos: ${mouseX} ${mouseY}`)
-    // alert(`shape pos: ${shapePosX.value} ${shapePosY.value}`)
+
+    console.log(`Selected`);
+    console.log(selected_shapes.value)
+
+    // As it works fine we want to pick the top most shape to change the position.
+    const selected_shapes_keys = Object.keys(selected_shapes.value);
+    const select_key = selected_shapes_keys[selected_shapes_keys.length - 1];
+
+    if (!select_key) {
+      console.log("No select key found")
+      return
+    }
+
+    _key.value = select_key;
+
+    console.log("Selected key with record")
+    console.log(selected_shapes.value[select_key]);
+
+    isDragging.value = true;
+    gl.canvas.style.cursor = "pointer";
+
+
+    // if (Object.keys(selected_shapes.value).length) {
+    //   isDragging.value = true
+    //   gl.canvas.style.cursor = "pointer";
+    // }
+
+
+    // if (mouseX >= (shapePosX.value - shapeWidth.value/2) && mouseX <= shapePosX.value + (shapeWidth.value/2) &&
+    //   mouseY >= (shapePosY.value -shapeHeight.value/2) && mouseY <= shapePosY.value + (shapeHeight.value/2)) {
+    //     isDragging.value = true
+    //     gl.canvas.style.cursor = "pointer";
+    //     console.log(`isDragging: ${isDragging.value}`)
+    //     newShapePosX.value = mouseX
+    //     newShapePosY.value = mouseY
+    // } else {
+    //   isDragging.value = false
+    //   gl.canvas.style.cursor = "default"
+    // }
   }
 
   function mouseup(event) {
-    // alert("mouseup triggered")
+    gl.canvas.style.cursor = "default";
+    clearSelectedList();
     isDragging.value = false;
   }
 
   function mouseleave(event) {
-    // alert("mouseleave triggered")
+    gl.canvas.style.cursor = "default";
+    clearSelectedList();
     isDragging.value = false;
   }
 

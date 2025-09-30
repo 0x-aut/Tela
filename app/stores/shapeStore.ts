@@ -21,18 +21,20 @@ export const useShapeStore = defineStore(
       shapes.value[`${shape.id}-${_length+1}`] = shape
     }
 
-    // function editShapeCoords(shape_id: string, partial_shape_coords: Partial<Shape>) {
-    //   if(shapes.value[shape_id]) {
-    //     shapes.value[shape_id].coordX = partial_shape_coords.coordX?
-    //     shapes.value[shape_id].coordY = partial_shape_coords.coordY?
-    //   }
-    // }
+    function editShapeCoords(shape_id: string, partial_shape_coords: Partial<Shape>) {
+      if (!shapes.value[shape_id]) {
+        console.log("Shape with id not found")
+        return
+      }
+      Object.assign(shapes.value[shape_id], partial_shape_coords)
+      console.log("changed shape coords")
+    }
 
-    function removeShape(shape: Shape) {
-      const shape_id = shape.id
-      if (Object.keys(shapes.value).length === 0) {
-        shapes.value = {};
-      }else if(shapes.value[shape_id]) {
+    function removeShape(shape_id: string) {
+      // if (Object.keys(shapes.value).length === 0) {
+      //   shapes.value = {};
+      // }
+      if(shapes.value[shape_id]) {
         delete shapes.value[shape_id];
       }
     }
@@ -44,7 +46,7 @@ export const useShapeStore = defineStore(
     }
 
     return { 
-      shapes, addShape, deleteAllShapes, removeShape
+      shapes, addShape, deleteAllShapes, removeShape, editShapeCoords
     }
   },
   {

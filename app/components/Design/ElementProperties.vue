@@ -48,7 +48,6 @@ const _drawFrameRectangle = (width: number, height: number) => {
       />
     </div>
     <div class="shape-wrapper wrapper-animation" v-if="actionStateStore.action_state == ActionState.DRAWSHAPE">
-      <span class="geist-regular">Rectangle</span>
       <PropertyShape />
     </div> 
     <div class="export-wrapper">
@@ -164,7 +163,10 @@ const _drawFrameRectangle = (width: number, height: number) => {
     }
   }
   .shape-wrapper {
-    border: 1px solid white;
+    // border: 1px solid white;
+    display: flex;
+    flex-direction: column;
+    width: stretch;
     span {
       font-size: 13px;
     }

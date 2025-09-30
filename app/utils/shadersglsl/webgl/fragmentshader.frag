@@ -9,6 +9,6 @@ out vec4 outColor;
 
 void main() {
   // Just set the output to a constant redish-purple
-  outColor = vec4(0.71f, 0.71f, 0.71f, 1.0f);
+  outColor = vec4(1, 1, 1, 1.0f);
   // outColor = inColor;
 }
