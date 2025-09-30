@@ -1,8 +1,43 @@
 <script lang="ts" setup>
+import { signIn, signUp, useSession } from '../../lib/auth-client';
+import { ref } from 'vue';
 
 useSeoMeta({
   title: "Tela | Log in to your account"
 })
+
+const router = useRouter()
+
+var isLoading = ref(false);
+var name = ref("");
+var email = ref("");
+var password = ref("");
+var confirm_password = ref("");
+
+const createAccount = async () => {
+  if (confirm_password !== password) {
+    alert("Not the same password");
+    return
+  }
+  const { data, error } = await signUp.email({
+    email: email.value,
+    name: name.value,
+    password: password.value,
+    }, {
+    onRequest: (ctx) => {
+      isLoading.value = true
+    },
+    onSuccess: (ctx) => {
+      //redirect to the dashboard or sign in page
+      router.push("/design/1")
+    },
+    onError: (ctx) => {
+      // display the error message
+      alert(ctx.error.message);
+      console.log(ctx.error)
+    },
+  });
+}
 
 </script>
 
@@ -26,6 +61,7 @@ useSeoMeta({
               type="text"
               name="name"
               required
+              v-model="name"
             />
           </div>
           <div class="input-form">
@@ -37,6 +73,7 @@ useSeoMeta({
               type="email"
               name="email"
               required
+              v-model="email"
             />
           </div>
           <div class="input-form">
@@ -48,6 +85,7 @@ useSeoMeta({
               type="password"
               name="password"
               required
+              v-model="password"
             />
           </div>
           <div class="input-form">
@@ -59,12 +97,14 @@ useSeoMeta({
               type="password"
               name="confirmpassword"
               required
+              v-model="confirm_password"
             />
           </div>
         </form>
         <div class="action-button-wrapper">
           <button class="action1">
-            <span class="geist-medium">Create your account</span>
+            <span class="geist-medium" v-if="isLoading === false">Create your account</span>
+            <ReusablesLoader v-if="isLoading === true" />
           </button>
         </div>
       </div>

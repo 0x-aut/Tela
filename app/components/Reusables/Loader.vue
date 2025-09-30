@@ -16,8 +16,7 @@ const props = defineProps({
     <LoaderCircle
       :size="props.size"
       :color="'#000000'"
-      :stroke-width="1"
-      absoluteStrokeWidth
+      :stroke-width="2.5"
       class="load-icon"
     />
   </div>
@@ -35,8 +34,14 @@ transform: rotate(360deg);
 }
 }
 
+.loader-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Apply the animation to an element */
 .load-icon {
-animation: rotate 2s linear infinite;
+animation: rotate 1s linear infinite;
 }
 </style>

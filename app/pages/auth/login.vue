@@ -1,8 +1,37 @@
 <script lang="ts" setup>
+import { signIn, signUp, useSession } from '../../lib/auth-client';
+import { ref } from 'vue';
 
 useSeoMeta({
   title: "Tela | Log in to your account"
 })
+
+const router = useRouter();
+
+var isLoading = ref(false);
+var email = ref("");
+var password = ref("");
+
+const logIn = async () => {
+  const { data, error } = await signIn.email({
+    email: email.value,
+    password: password.value,
+  }, {
+    onRequest: (ctx) => {
+      isLoading.value = true
+    },
+    onSuccess: (ctx) => {
+      //redirect to the dashboard or sign in page
+      router.push("/design/1")
+      isLoading.value = false
+    },
+    onError: (ctx) => {
+      // display the error message
+      alert(ctx.error.message);
+      isLoading.value = false
+    },
+  });
+}
 
 </script>
 
@@ -27,6 +56,7 @@ useSeoMeta({
               name="email"
               class="geist-medium"
               required
+              v-model="email"
             />
           </div>
           <div class="input-form">
@@ -44,7 +74,8 @@ useSeoMeta({
         </form>
         <div class="action-button-wrapper">
           <button class="action1">
-            <span class="geist-medium">Log in to your account</span>
+            <span class="geist-medium" v-if="isLoading === false">Log in to your account</span>
+            <ReusablesLoader v-if="isLoading === true" />
           </button>
         </div>
       </div>
