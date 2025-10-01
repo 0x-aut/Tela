@@ -35,9 +35,22 @@ export class Camera {
 
   getViewMatrix(): Float32Array {
     // Create a 3x3 view matrix for 2D transformation
-    // [zoom, 0, -posX * zoom]
-    // [0, zoom, -posY * zoom]
-    // [0, 0, 1]
+    // This centers the canvas at origin (0,0) and applies zoom/pan
+    // Translation accounts for: centering + zoom + camera position
+    if (!this.canvas) {
+      const matrix = new Float32Array(9);
+      matrix[0] = this.zoom;
+      matrix[4] = this.zoom;
+      matrix[8] = 1;
+      return matrix;
+    }
+
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+
+    // [zoom, 0, 0]
+    // [0, zoom, 0]
+    // [translateX, translateY, 1]
     const matrix = new Float32Array(9);
     matrix[0] = this.zoom;
     matrix[1] = 0;
@@ -45,8 +58,8 @@ export class Camera {
     matrix[3] = 0;
     matrix[4] = this.zoom;
     matrix[5] = 0;
-    matrix[6] = -this.position.x * this.zoom;
-    matrix[7] = -this.position.y * this.zoom;
+    matrix[6] = centerX - this.position.x * this.zoom;
+    matrix[7] = centerY - this.position.y * this.zoom;
     matrix[8] = 1;
     return matrix;
   }
