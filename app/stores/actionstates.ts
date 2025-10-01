@@ -7,11 +7,13 @@ export const useActionStateStore = defineStore(
   () => {
 
     const action_state = ref<ActionState>(ActionState.POINTER);
+    const selectedShape = ref<string>('rectangle');
+
     function changeActionState(new_state: ActionState) {
       action_state.value = new_state;
     }
 
-    return { action_state, changeActionState }
+    return { action_state, changeActionState, selectedShape }
   },{
     persist: true
   }
