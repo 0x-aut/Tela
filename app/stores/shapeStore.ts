@@ -9,11 +9,12 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { Shape } from '../shared/types/ShapeTypes/Shape';
+import { Rectangle } from '../shared/types/ShapeTypes/Rectangle';
 
 export const useShapeStore = defineStore(
   'shapeStore',
   () => {
-    const shapes = ref<Record<string, Shape>>({});
+    const shapes = ref<Record<string, Shape | Rectangle>>({});
     const select_shape = ref<string>(""); // Or it could simply be a string pointing to the shapes
     // Shapes will be something like: { "rect-1": Shape(x, y, h, w), }
 
@@ -21,13 +22,13 @@ export const useShapeStore = defineStore(
       select_shape.value = shape_id;
     }
 
-    function addShape(shape: Shape) {
+    function addShape(shape: Shape | Rectangle) {
       console.log(`${shape.coordX}, ${shape.coordY}`)
       var _length = Object.keys(shapes.value).length;
       shapes.value[`${shape.id}-${_length+1}`] = shape
     }
 
-    function editShape(shape_id: string, partial_shape: Partial<Shape>) {
+    function editShape(shape_id: string, partial_shape: Partial<Shape> | Partial<Rectangle>) {
       if (!shapes.value[shape_id]) {
         console.log("Shape with id not found")
         return

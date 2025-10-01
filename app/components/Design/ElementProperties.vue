@@ -12,15 +12,15 @@ const globalStore = useGlobalStore();
 // There will be another order magnitude emit here to go to the parent [id].vue
 const emit = defineEmits<{
   (e: 'draw-frameRectangle', width: number, height: number): void,
-  (e: 'editProperties', coordX: number, coordY: number, sizeWidth: number, sizeHeight: number): void,
+  (e: 'editProperties', coordX: number, coordY: number, sizeWidth: number, sizeHeight: number, opacity: number, borderRadius: number): void,
 }>();
 
 const _drawFrameRectangle = (width: number, height: number) => {
   emit('draw-frameRectangle', width, height);
 }
 
-const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number) => {
-  emit('editProperties', coordX, coordY, sizeWidth, sizeHeight)
+const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number, opacity: number, borderRadius: number) => {
+  emit('editProperties', coordX, coordY, sizeWidth, sizeHeight, opacity, borderRadius)
 }
 
 const openShare = () => {
