@@ -43,7 +43,35 @@ export function useDragHelper(
       gl.canvas.style.cursor = "default";
       globalStore.change_pos(mouseX, mouseY);
       globalStore.changeTranslation(mouseX, mouseY);
-    } 
+
+      // Check if mouse is hovering over any shape
+      let hoveredShapeKey = "";
+      for (const key in shapeStore.shapes) {
+        if (!shapeStore.shapes[key]) continue;
+
+        var shapeX = shapeStore.shapes[key].coordX;
+        var shapeY = shapeStore.shapes[key].coordY;
+        var shapeH = shapeStore.shapes[key].height;
+        var shapeW = shapeStore.shapes[key].width;
+
+        // Check if mouse is within shape bounds
+        if ((mouseX >= (shapeX - shapeW/2)) && (mouseX <= (shapeX + shapeW/2)) &&
+            (mouseY >= (shapeY - shapeH/2)) && (mouseY <= (shapeY + shapeH/2))) {
+          hoveredShapeKey = key;
+        }
+      }
+
+      // Update hovered shape in store
+      if (hoveredShapeKey) {
+        shapeStore.setHoveredShape(hoveredShapeKey);
+        gl.canvas.style.cursor = "pointer";
+      } else {
+        shapeStore.clearHoveredShape();
+        gl.canvas.style.cursor = "default";
+      }
+
+      renderFunction();
+    }
     if(isDragging.value) {
       var coordX = mouseX;
       var coordY = mouseY;
@@ -132,6 +160,7 @@ export function useDragHelper(
   function mouseleave(event) {
     gl.canvas.style.cursor = "default";
     clearSelectedList();
+    shapeStore.clearHoveredShape();
     isDragging.value = false;
   }
 
