@@ -3,6 +3,7 @@ import { updateUniforms } from '../webgl/render';
 import { useGlobalStore } from '../../stores/global';
 import { useShapeStore } from '../../stores/shapeStore'
 import type { Shape } from '~/shared/types/ShapeTypes/Shape';
+import type { Camera } from '../webgl/camera';
 
 
 
@@ -10,6 +11,7 @@ export function useDragHelper(
   gl: WebGL2RenderingContext,
   program: WebGLProgram,
   renderFunction:() => void,
+  camera?: Camera,
   options: Record<any, any> = {}
 ) {
   const globalStore = useGlobalStore();
@@ -37,14 +39,25 @@ export function useDragHelper(
   var _key = ref("")
 
   function mousemove(event) {
-    const mouseX = event.clientX;
-    const mouseY = event.clientY;
+    const rect = gl.canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    // Convert to world coordinates if camera is available
+    let worldX = mouseX;
+    let worldY = mouseY;
+    if (camera) {
+      const worldPos = camera.screenToWorld(mouseX, mouseY);
+      worldX = worldPos.x;
+      worldY = worldPos.y;
+    }
+
     if (!isDragging.value) {
       gl.canvas.style.cursor = "default";
       globalStore.change_pos(mouseX, mouseY);
       globalStore.changeTranslation(mouseX, mouseY);
 
-      // Check if mouse is hovering over any shape
+      // Check if mouse is hovering over any shape (in world space)
       let hoveredShapeKey = "";
       for (const key in shapeStore.shapes) {
         if (!shapeStore.shapes[key]) continue;
@@ -54,9 +67,9 @@ export function useDragHelper(
         var shapeH = shapeStore.shapes[key].height;
         var shapeW = shapeStore.shapes[key].width;
 
-        // Check if mouse is within shape bounds
-        if ((mouseX >= (shapeX - shapeW/2)) && (mouseX <= (shapeX + shapeW/2)) &&
-            (mouseY >= (shapeY - shapeH/2)) && (mouseY <= (shapeY + shapeH/2))) {
+        // Check if mouse is within shape bounds (world coordinates)
+        if ((worldX >= (shapeX - shapeW/2)) && (worldX <= (shapeX + shapeW/2)) &&
+            (worldY >= (shapeY - shapeH/2)) && (worldY <= (shapeY + shapeH/2))) {
           hoveredShapeKey = key;
         }
       }
@@ -73,9 +86,8 @@ export function useDragHelper(
       renderFunction();
     }
     if(isDragging.value) {
-      var coordX = mouseX;
-      var coordY = mouseY;
-      shapeStore.editShape(_key.value, {coordX: coordX, coordY: coordY});
+      // Use world coordinates for dragging
+      shapeStore.editShape(_key.value, {coordX: worldX, coordY: worldY});
       renderFunction()
     }
   }
@@ -88,8 +100,18 @@ export function useDragHelper(
   }
 
   function mousedown(event) {
-    const mouseX = event.clientX;
-    const mouseY = event.clientY;
+    const rect = gl.canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    // Convert to world coordinates if camera is available
+    let worldX = mouseX;
+    let worldY = mouseY;
+    if (camera) {
+      const worldPos = camera.screenToWorld(mouseX, mouseY);
+      worldX = worldPos.x;
+      worldY = worldPos.y;
+    }
 
     for (const key in shapeStore.shapes) {
 
@@ -101,13 +123,15 @@ export function useDragHelper(
       var shapeX = shapeStore.shapes[key].coordX;
       var shapeY = shapeStore.shapes[key].coordY;
       var shapeH = shapeStore.shapes[key].height;
-      var shapeW = shapeStore.shapes[key].height;
+      var shapeW = shapeStore.shapes[key].width;
 
 
-      // We need to filter the shapes based on the positions here
+      // We need to filter the shapes based on the positions here (world coordinates)
       // Because of the center of the shape
-      if ((mouseX >= (shapeX - shapeW/2)) && (mouseX <= (shapeX + shapeW/2)) && (mouseY >= (shapeY - shapeH/2)) && (mouseY <= (shapeY + shapeH/2))) {
+      if ((worldX >= (shapeX - shapeW/2)) && (worldX <= (shapeX + shapeW/2)) && (worldY >= (shapeY - shapeH/2)) && (worldY <= (shapeY + shapeH/2))) {
         selected_shapes.value[key] = shapeStore.shapes[key]
+      } else {
+        shapeStore.clearSelectShape();
       }
     }
 
@@ -124,6 +148,7 @@ export function useDragHelper(
     }
 
     _key.value = select_key;
+    shapeStore.selectShape(_key.value)
 
     console.log("Selected key with record")
     console.log(selected_shapes.value[select_key]);
