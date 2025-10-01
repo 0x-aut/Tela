@@ -3,45 +3,47 @@ import { setupBuffer } from '../webgl/setbuffer';
 export function drawLine(
   gl: WebGL2RenderingContext,
   program: WebGLProgram,
-  positionX: number,
-  positionY: number,
-  length: number = 100,
-  thickness: number = 2,
-  angle: number = 45 // Default 45 degrees
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  thickness: number = 2
 ): WebGLVertexArrayObject {
-  // Convert angle to radians
-  const angleRad = (angle * Math.PI) / 180;
+  // Calculate the direction vector
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const length = Math.sqrt(dx * dx + dy * dy);
 
-  // Calculate half dimensions
-  const halfLength = length / 2;
+  if (length === 0) {
+    // If start and end are the same, draw a small horizontal line
+    endX = startX + 100;
+  }
+
+  // Calculate perpendicular vector for thickness
+  const angle = Math.atan2(endY - startY, endX - startX);
+  const perpAngle = angle + Math.PI / 2;
   const halfThickness = thickness / 2;
+  const offsetX = Math.cos(perpAngle) * halfThickness;
+  const offsetY = Math.sin(perpAngle) * halfThickness;
 
-  // Calculate the four corners of the line rectangle (rotated)
-  const cos = Math.cos(angleRad);
-  const sin = Math.sin(angleRad);
-
-  // Unrotated corners relative to center
-  const corners = [
-    { x: -halfLength, y: -halfThickness }, // Bottom-left
-    { x: halfLength, y: -halfThickness },  // Bottom-right
-    { x: -halfLength, y: halfThickness },  // Top-left
-    { x: halfLength, y: halfThickness },   // Top-right
-  ];
-
-  // Rotate and translate corners
-  const rotatedCorners = corners.map(corner => ({
-    x: positionX + (corner.x * cos - corner.y * sin),
-    y: positionY + (corner.x * sin + corner.y * cos),
-  }));
+  // Calculate the four corners of the line rectangle
+  const x1 = startX + offsetX;
+  const y1 = startY + offsetY;
+  const x2 = startX - offsetX;
+  const y2 = startY - offsetY;
+  const x3 = endX + offsetX;
+  const y3 = endY + offsetY;
+  const x4 = endX - offsetX;
+  const y4 = endY - offsetY;
 
   // Create two triangles to form rectangle
   const positions = new Float32Array([
-    rotatedCorners[0].x, rotatedCorners[0].y, // Bottom-left
-    rotatedCorners[1].x, rotatedCorners[1].y, // Bottom-right
-    rotatedCorners[2].x, rotatedCorners[2].y, // Top-left
-    rotatedCorners[2].x, rotatedCorners[2].y, // Top-left
-    rotatedCorners[1].x, rotatedCorners[1].y, // Bottom-right
-    rotatedCorners[3].x, rotatedCorners[3].y, // Top-right
+    x1, y1, // Top-left of start
+    x2, y2, // Bottom-left of start
+    x3, y3, // Top-left of end
+    x2, y2, // Bottom-left of start
+    x4, y4, // Bottom-left of end
+    x3, y3, // Top-left of end
   ]);
 
   const vao = setupBuffer(gl, program, positions);

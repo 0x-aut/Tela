@@ -10,41 +10,25 @@ export function drawCircle(
   const segments = 64; // Number of segments to approximate circle
   const positions: number[] = [];
 
-  // Create triangle fan for circle
-  // Center point
   const centerX = positionX;
   const centerY = positionY;
 
-  // Generate vertices around the circle
-  for (let i = 0; i <= segments; i++) {
-    const angle = (i / segments) * Math.PI * 2;
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius;
+  // Create triangles to form a complete circle
+  for (let i = 0; i < segments; i++) {
+    // Center point
+    positions.push(centerX, centerY);
 
-    if (i === 0) {
-      // First triangle
-      positions.push(centerX, centerY);
-      positions.push(x, y);
-    } else if (i < segments) {
-      // Middle triangles
-      positions.push(centerX, centerY);
-      const prevAngle = ((i - 1) / segments) * Math.PI * 2;
-      const prevX = centerX + Math.cos(prevAngle) * radius;
-      const prevY = centerY + Math.sin(prevAngle) * radius;
-      positions.push(prevX, prevY);
-      positions.push(x, y);
-    } else {
-      // Last triangle to close the circle
-      positions.push(centerX, centerY);
-      const prevAngle = ((i - 1) / segments) * Math.PI * 2;
-      const prevX = centerX + Math.cos(prevAngle) * radius;
-      const prevY = centerY + Math.sin(prevAngle) * radius;
-      positions.push(prevX, prevY);
-      const firstAngle = 0;
-      const firstX = centerX + Math.cos(firstAngle) * radius;
-      const firstY = centerY + Math.sin(firstAngle) * radius;
-      positions.push(firstX, firstY);
-    }
+    // First point on the circle
+    const angle1 = (i / segments) * Math.PI * 2;
+    const x1 = centerX + Math.cos(angle1) * radius;
+    const y1 = centerY + Math.sin(angle1) * radius;
+    positions.push(x1, y1);
+
+    // Second point on the circle
+    const angle2 = ((i + 1) / segments) * Math.PI * 2;
+    const x2 = centerX + Math.cos(angle2) * radius;
+    const y2 = centerY + Math.sin(angle2) * radius;
+    positions.push(x2, y2);
   }
 
   const positionsArray = new Float32Array(positions);

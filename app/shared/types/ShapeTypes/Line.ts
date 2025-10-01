@@ -1,18 +1,33 @@
 import { Shape } from './Shape'
 
 export class Line extends Shape {
+  startX: number
+  startY: number
+  endX: number
+  endY: number
+  thickness: number
   borderRadius: number
 
   constructor(
     id: string,
-    length: number,
-    thickness: number,
-    coordX: number,
-    coordY: number,
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    thickness: number = 2,
     borderRadius: number = 0
   ) {
-    // For line, height is thickness and width is length
-    super(id, thickness, length, coordX, coordY, 'line')
+    // Calculate center point and dimensions for the base Shape class
+    const centerX = (startX + endX) / 2;
+    const centerY = (startY + endY) / 2;
+    const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+    super(id, thickness, length, centerX, centerY, 'line')
+
+    this.startX = startX
+    this.startY = startY
+    this.endX = endX
+    this.endY = endY
+    this.thickness = thickness
     this.borderRadius = borderRadius
   }
 }

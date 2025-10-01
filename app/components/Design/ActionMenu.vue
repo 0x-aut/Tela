@@ -97,7 +97,7 @@ onUnmounted(() => {
           <Square v-if="actionStateStore.selectedShape === 'rectangle'" :size="20" :stroke-width="1" />
           <Circle v-else-if="actionStateStore.selectedShape === 'circle'" :size="20" :stroke-width="1" />
           <Triangle v-else-if="actionStateStore.selectedShape === 'triangle'" :size="20" :stroke-width="1" />
-          <Minus v-else-if="actionStateStore.selectedShape === 'line'" :size="20" :stroke-width="1" style="transform: rotate(45deg);" />
+          <Minus v-else-if="actionStateStore.selectedShape === 'line'" :size="20" :stroke-width="1" />
         </button>
         <button title="More shapes" class="more-icon-container" @click="toggleShapeDropdown">
           <ChevronDown
@@ -119,7 +119,7 @@ onUnmounted(() => {
             <span class="geist-regular">Triangle</span>
           </div>
           <div class="shape-dropdown-item" @click="_drawShape('line')">
-            <Minus :size="13" :stroke-width="1" absoluteStrokeWidth style="transform: rotate(45deg);" />
+            <Minus :size="13" :stroke-width="1" absoluteStrokeWidth />
             <span class="geist-regular">Line</span>
           </div>
         </div>

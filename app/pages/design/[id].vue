@@ -63,6 +63,11 @@ onMounted(() => {
   const color = [0.9, 0.9, 0.9, 1];
   // globalStore.deleteTrans();
 
+  // Track line drawing state
+  let isDrawingLine = false;
+  let lineStartX = 0;
+  let lineStartY = 0;
+
   // Add canvas click event handler for drawing shapes
   const handleCanvasClick = (event: MouseEvent) => {
     if (actionStateStore.action_state === ActionState.DRAWSHAPE) {
@@ -70,15 +75,40 @@ onMounted(() => {
       const clickX = event.clientX - rect.left;
       const clickY = event.clientY - rect.top;
 
-      // Default shape dimensions
-      const defaultSize = 100;
+      // Special handling for line: click-and-drag
+      if (actionStateStore.selectedShape === 'line') {
+        if (!isDrawingLine) {
+          // Start drawing line
+          isDrawingLine = true;
+          lineStartX = clickX;
+          lineStartY = clickY;
+        }
+      } else {
+        // Default shape dimensions for other shapes
+        const defaultSize = 100;
+        // Draw shape at click position based on selected shape type
+        drawShapeAtPosition(clickX, clickY, defaultSize, defaultSize, actionStateStore.selectedShape);
+      }
+    }
+  };
 
-      // Draw shape at click position based on selected shape type
-      drawShapeAtPosition(clickX, clickY, defaultSize, defaultSize, actionStateStore.selectedShape);
+  // Add mouse up handler for line drawing
+  const handleCanvasMouseUp = (event: MouseEvent) => {
+    if (actionStateStore.action_state === ActionState.DRAWSHAPE &&
+        actionStateStore.selectedShape === 'line' &&
+        isDrawingLine) {
+      const rect = canvas.getBoundingClientRect();
+      const endX = event.clientX - rect.left;
+      const endY = event.clientY - rect.top;
+
+      // Draw line from start to end
+      drawLineFromPoints(lineStartX, lineStartY, endX, endY);
+      isDrawingLine = false;
     }
   };
 
   canvas.addEventListener('click', handleCanvasClick);
+  canvas.addEventListener('mouseup', handleCanvasMouseUp);
 
   if (Object.keys(shapeStore.shapes).length > 0) {
     console.log("Shapes exist")
@@ -110,7 +140,13 @@ onMounted(() => {
           vao = drawTriangle(gl, program, shapeX, shapeY, shapeWidth, shapeHeight);
           vertexCount = 3;
         } else if (shapeType === 'line') {
-          vao = drawLine(gl, program, shapeX, shapeY, shapeWidth, shapeHeight, 45);
+          const lineShape = shape as any; // Cast to access line-specific properties
+          if (lineShape.startX !== undefined) {
+            vao = drawLine(gl, program, lineShape.startX, lineShape.startY, lineShape.endX, lineShape.endY, lineShape.thickness || 2);
+          } else {
+            // Fallback for old line format
+            vao = drawLine(gl, program, shapeX - shapeWidth/2, shapeY, shapeX + shapeWidth/2, shapeY, shape.height);
+          }
           vertexCount = 6;
         } else {
           vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
@@ -139,6 +175,7 @@ onMounted(() => {
 
   onUnmounted(() => {
     canvas.removeEventListener('click', handleCanvasClick);
+    canvas.removeEventListener('mouseup', handleCanvasMouseUp);
   })
 })
 
@@ -165,16 +202,13 @@ const drawShapeAtPosition = (clickX: number, clickY: number, width: number, heig
     let vao;
     let vertexCount = 6;
 
-    // Draw based on shape type
+    // Draw based on shape type (line is handled separately with drawLineFromPoints)
     if (shapeType === 'circle') {
       vao = drawCircle(gl, program, clickX, clickY, width / 2);
       vertexCount = getCircleVertexCount();
     } else if (shapeType === 'triangle') {
       vao = drawTriangle(gl, program, clickX, clickY, width, height);
       vertexCount = 3;
-    } else if (shapeType === 'line') {
-      vao = drawLine(gl, program, clickX, clickY, width, height / 10, 45);
-      vertexCount = 6;
     } else {
       vao = drawRectangle(gl, program, clickX-width/2, clickY-height/2, width, height);
     }
@@ -193,13 +227,11 @@ const drawShapeAtPosition = (clickX: number, clickY: number, width: number, heig
     render();
     const { cleanup } = useDragHelper(gl, program, render);
 
-    // Add shape based on type
+    // Add shape based on type (line is handled separately)
     if (shapeType === 'circle') {
       shapeStore.addShape(new Circle("Circle", clickX, clickY, width / 2));
     } else if (shapeType === 'triangle') {
       shapeStore.addShape(new Triangle("Triangle", height, width, clickX, clickY));
-    } else if (shapeType === 'line') {
-      shapeStore.addShape(new Line("Line", width, height / 10, clickX, clickY, 0));
     } else {
       shapeStore.addShape(new Shape("Rectangle", height, width, clickX, clickY, 'rectangle'));
     }
@@ -208,6 +240,51 @@ const drawShapeAtPosition = (clickX: number, clickY: number, width: number, heig
     console.log(shapeStore.shapes)
   } catch(error: any) {
     console.log("Error rendering shape: ", error.message)
+  }
+}
+
+const drawLineFromPoints = (startX: number, startY: number, endX: number, endY: number, thickness: number = 2) => {
+  const canvas = canvasref.value;
+  if (!canvas) return
+
+  const gl = initializeWebGL(canvas)
+
+  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
+  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
+  var program = createProgram(gl, vertexShader, fragmentShader);
+
+  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
+
+  const render = () => {
+    resizeCanvas(gl.canvas);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+
+    gl.useProgram(program);
+
+    const vao = drawLine(gl, program, startX, startY, endX, endY, thickness);
+    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+
+    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+    gl.bindVertexArray(vao);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    requestAnimationFrame(render);
+  };
+
+  try {
+    render();
+    const { cleanup } = useDragHelper(gl, program, render);
+
+    // Add line shape to store
+    shapeStore.addShape(new Line("Line", startX, startY, endX, endY, thickness));
+
+    console.log("Line added from:", startX, startY, "to:", endX, endY);
+    console.log(shapeStore.shapes)
+  } catch(error: any) {
+    console.log("Error rendering line: ", error.message)
   }
 }
 
@@ -331,7 +408,13 @@ const deleteShape = (id: string) => {
           vao = drawTriangle(gl, program, shapeX, shapeY, shapeWidth, shapeHeight);
           vertexCount = 3;
         } else if (shapeType === 'line') {
-          vao = drawLine(gl, program, shapeX, shapeY, shapeWidth, shapeHeight, 45);
+          const lineShape = shape as any; // Cast to access line-specific properties
+          if (lineShape.startX !== undefined) {
+            vao = drawLine(gl, program, lineShape.startX, lineShape.startY, lineShape.endX, lineShape.endY, lineShape.thickness || 2);
+          } else {
+            // Fallback for old line format
+            vao = drawLine(gl, program, shapeX - shapeWidth/2, shapeY, shapeX + shapeWidth/2, shapeY, shape.height);
+          }
           vertexCount = 6;
         } else {
           vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
