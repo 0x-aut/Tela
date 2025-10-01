@@ -1,10 +1,13 @@
 <script lang="ts" setup>
-import { MousePointer2, Frame, Square, ChevronDown, Type, MessageCircle, Sparkles } from 'lucide-vue-next';
+import { MousePointer2, Frame, Square, ChevronDown, Type, MessageCircle, Sparkles, Circle, Triangle, Minus } from 'lucide-vue-next';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { ActionState } from '../../shared/types/ActionState';
 import { useActionStateStore } from '../../stores/actionstates';
 
 
 const actionStateStore = useActionStateStore();
+const isShapeDropdownOpen = ref(false);
+const dropdownRef = ref<HTMLDivElement | null>(null);
 
 // const activeButton = computed((actionstate: ActionState) => ({
 //   active: actionStateStore.action_state === actionstate
@@ -18,8 +21,14 @@ const _Action = () => {
 }
 
 // Do I add param to the function?? No
-const _drawShape = () => {
-  actionStateStore.changeActionState(ActionState.DRAWSHAPE)
+const _drawShape = (shapeType: string = 'rectangle') => {
+  actionStateStore.selectedShape = shapeType; // Store in actionStateStore
+  actionStateStore.changeActionState(ActionState.DRAWSHAPE);
+  isShapeDropdownOpen.value = false;
+}
+
+const toggleShapeDropdown = () => {
+  isShapeDropdownOpen.value = !isShapeDropdownOpen.value;
 }
 
 const _text = () => {
@@ -33,6 +42,21 @@ const _comment = () => {
 const _aiEdit = () => {
   actionStateStore.changeActionState(ActionState.AIEDIT)
 }
+
+// Close dropdown when clicking outside
+const handleOutsideClick = (event: MouseEvent) => {
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target as Node)) {
+    isShapeDropdownOpen.value = false;
+  }
+};
+
+// Add and remove outside click listener
+onMounted(() => {
+  document.addEventListener('click', handleOutsideClick);
+});
+onUnmounted(() => {
+  document.removeEventListener('click', handleOutsideClick);
+});
 
 </script>
 
@@ -63,24 +87,42 @@ const _aiEdit = () => {
           :stroke-width="1"
         />
       </button>
-      <div class="action-icon-frame">
+      <div class="action-icon-frame" ref="dropdownRef">
         <button
-          title="Rectangle"
+          :title="actionStateStore.selectedShape === 'rectangle' ? 'Rectangle' : actionStateStore.selectedShape === 'circle' ? 'Circle' : actionStateStore.selectedShape === 'triangle' ? 'Triangle' : 'Line'"
           :class="{ 'active': (ActionState.DRAWSHAPE === actionStateStore.action_state), 'inactive': (ActionState.DRAWSHAPE !== actionStateStore.action_state) }"
           class="action-icon-container"
-          @click="_drawShape"
+          @click="_drawShape(actionStateStore.selectedShape)"
         >
-          <Square
-            :size="20"
-            :stroke-width="1"
-          />
+          <Square v-if="actionStateStore.selectedShape === 'rectangle'" :size="20" :stroke-width="1" />
+          <Circle v-else-if="actionStateStore.selectedShape === 'circle'" :size="20" :stroke-width="1" />
+          <Triangle v-else-if="actionStateStore.selectedShape === 'triangle'" :size="20" :stroke-width="1" />
+          <Minus v-else-if="actionStateStore.selectedShape === 'line'" :size="20" :stroke-width="1" style="transform: rotate(45deg);" />
         </button>
-        <button title="More" class="more-icon-container">
-          <ChevronDown 
+        <button title="More shapes" class="more-icon-container" @click="toggleShapeDropdown">
+          <ChevronDown
             :size="18"
             :stroke-width="1"
           />
         </button>
+        <div v-if="isShapeDropdownOpen" class="shape-dropdown-menu">
+          <div class="shape-dropdown-item" @click="_drawShape('rectangle')">
+            <Square :size="13" :stroke-width="1" absoluteStrokeWidth />
+            <span class="geist-regular">Rectangle</span>
+          </div>
+          <div class="shape-dropdown-item" @click="_drawShape('circle')">
+            <Circle :size="13" :stroke-width="1" absoluteStrokeWidth />
+            <span class="geist-regular">Circle</span>
+          </div>
+          <div class="shape-dropdown-item" @click="_drawShape('triangle')">
+            <Triangle :size="13" :stroke-width="1" absoluteStrokeWidth />
+            <span class="geist-regular">Triangle</span>
+          </div>
+          <div class="shape-dropdown-item" @click="_drawShape('line')">
+            <Minus :size="13" :stroke-width="1" absoluteStrokeWidth style="transform: rotate(45deg);" />
+            <span class="geist-regular">Line</span>
+          </div>
+        </div>
       </div>
       <button
         title="Text"
@@ -169,6 +211,7 @@ const _aiEdit = () => {
   column-gap: 10px;
 
   .action-icon-frame {
+    position: relative;
     display: flex;
     align-items: center;
     column-gap: 0px;
@@ -180,9 +223,43 @@ const _aiEdit = () => {
       justify-content: center;
       align-items: center;
       border-radius: 5px;
+      cursor: pointer;
 
       &:hover {
         background-color: rgba(255, 255, 255, 0.1);
+      }
+    }
+
+    .shape-dropdown-menu {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 0;
+      min-width: 140px;
+      background: #2c2c2c;
+      border-radius: 8px;
+      border: 1px solid rgba(240, 240, 240, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      overflow: hidden;
+      animation: fadeIn 0.2s ease;
+
+      .shape-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        color: #ffffff;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background: #4a4a4a;
+        }
+
+        svg {
+          color: #ffffff;
+        }
       }
     }
   }
