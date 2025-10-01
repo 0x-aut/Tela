@@ -11,7 +11,10 @@ import {
   deleteShader, deleteProgram
 } from '../../utils/webgl/shaders';
 import { drawRectangle } from '../../utils/shapes/rectangle';
-import { updateUniforms } from '../../utils/webgl/render';
+import { 
+  updateUniforms, setOpacityUniform,
+  setBorderRadiusUniform, setShapeSizeUniform 
+} from '../../utils/webgl/render';
 import { Camera } from '../../utils/webgl/camera';
 import { useCameraInput } from '../../composables/useCameraInput';
 import { useDragHelper } from '../../utils/helpers/draghelper';
@@ -20,6 +23,7 @@ import fragmentshader from '~/utils/shadersglsl/webgl/fragmentshader.frag?raw';
 import { useGlobalStore } from '../../stores/global';
 import { useShapeStore } from '../../stores/shapeStore';
 import { Shape } from '../../shared/types/ShapeTypes/Shape';
+import { Rectangle } from '../../shared/types/ShapeTypes/Rectangle';
 
 definePageMeta({
   layout: "none",
@@ -63,6 +67,8 @@ onMounted(() => {
         const shapeWidth = shapeStore.shapes[key].width;
         const shapeX = shapeStore.shapes[key].coordX;
         const shapeY = shapeStore.shapes[key].coordY;
+        const shapeOpacity = shapeStore.shapes[key].opacity;
+        const shapeBorderRadius = ('borderRadius' in shapeStore.shapes[key]) ? shapeStore.shapes[key].borderRadius : 0;
 
         resizeCanvas(gl.canvas);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -73,6 +79,9 @@ onMounted(() => {
         const vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
 
         updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+        setOpacityUniform(gl, program, shapeOpacity);
+        setBorderRadiusUniform(gl, program, shapeBorderRadius);
+        setShapeSizeUniform(gl, program, shapeWidth, shapeHeight);
         gl.bindVertexArray(vao);
 
         gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
@@ -127,6 +136,9 @@ const _drawFrameRectangle = (width: number, height: number) => {
     gl.useProgram(program);
     const vao = drawRectangle(gl, program, windowWidthCenter-width/2, windowHeightCenter-height/2, width, height) // Center of the shape here
     updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+    setOpacityUniform(gl, program, 1.0);
+    setBorderRadiusUniform(gl, program, 0);
+    setShapeSizeUniform(gl, program, width, height);
 
     gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 
@@ -144,14 +156,15 @@ const _drawFrameRectangle = (width: number, height: number) => {
   try {
     render();
     const { cleanup } = useDragHelper(gl, program, render);
-    shapeStore.addShape(new Shape(
+    shapeStore.addShape(new Rectangle(
       "Rectangle",
       height,
       width,  
       windowWidthCenter,
       windowHeightCenter,
+      1.0,
+      0
     ));
-    console.log(shapeStore.shapes)
   } catch(error: any) {
     console.log("Error rendering shape: ", error.message)
   }
@@ -196,6 +209,8 @@ const deleteShape = (id: string) => {
         const shapeWidth = shapeStore.shapes[key].width;
         const shapeX = shapeStore.shapes[key].coordX;
         const shapeY = shapeStore.shapes[key].coordY;
+        const shapeOpacity = shapeStore.shapes[key].opacity;
+        const shapeBorderRadius = ('borderRadius' in shapeStore.shapes[key]) ? shapeStore.shapes[key].borderRadius : 0;
 
         resizeCanvas(gl.canvas);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -206,6 +221,9 @@ const deleteShape = (id: string) => {
         const vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
 
         updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+        setOpacityUniform(gl, program, shapeOpacity);
+        setBorderRadiusUniform(gl, program, shapeBorderRadius);
+        setShapeSizeUniform(gl, program, shapeWidth, shapeHeight);
         gl.bindVertexArray(vao);
 
         gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
@@ -223,7 +241,7 @@ const deleteShape = (id: string) => {
   }
 }
 
-const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number) => {
+const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number, opacity: number, borderRadius: number) => {
   const canvas = canvasref.value
   if (!canvas) return
 
@@ -238,10 +256,12 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
 
   shapeStore.editShape(shapeStore.select_shape, {
     coordX: Number(coordX), coordY: Number(coordY),
-    width: Number(sizeWidth), height: Number(sizeHeight)
+    width: Number(sizeWidth), height: Number(sizeHeight),
+    opacity: Number(opacity), borderRadius: Number(borderRadius)
   })
 
   const shape = shapeStore.shapes[shapeStore.select_shape];
+
 
   console.log("new shape")
   console.log(shape)
@@ -255,6 +275,10 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
     gl.useProgram(program);
     const vao = drawRectangle(gl, program, shape.coordX-shape.width/2, shape.coordY-shape.height/2, shape.width, shape.height) // Center of the shape here
     updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+    setOpacityUniform(gl, program, shape.opacity);
+    const shapeBorderRadius = ('borderRadius' in shape) ? shape.borderRadius : 0;
+    setBorderRadiusUniform(gl, program, shapeBorderRadius);
+    setShapeSizeUniform(gl, program, shape.width, shape.height);
 
     gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 
@@ -272,6 +296,7 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
   render()
   const { cleanup } = useDragHelper(gl, program, render);
 }
+
 
 
 </script>

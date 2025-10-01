@@ -8,8 +8,8 @@ import { MoveHorizontal, MoveVertical, Grip, Scan } from 'lucide-vue-next';
 
 
 const emit = defineEmits<{
-  (e: 'editProperties', coordX: number, coordY: number, sizeWidth: number, sizeHeight: number): void
-}>(); // There's gotta be an easy way but we will use this for now
+  (e: 'editProperties', coordX: number, coordY: number, sizeWidth: number, sizeHeight: number, opacity: number, borderRadius: number): void
+}>();
 
 const globalStore = useGlobalStore();
 const actionStore = useActionStateStore();
@@ -19,6 +19,8 @@ var _coordX = ref<number>(0);
 var _coordY = ref<number>(0);
 var _sizeWidth = ref<number>(0);
 var _sizeHeight = ref<number>(0);
+var _opacity = ref<number>(100);
+var _borderRadius = ref<number>(0);
 
 const getShapeProperties = shapeStore.shapes[shapeStore.select_shape];
 if (!getShapeProperties) {
@@ -26,16 +28,20 @@ if (!getShapeProperties) {
   _coordY.value = 0;
   _sizeWidth.value = 0;
   _sizeHeight.value = 0;
+  _opacity.value = 100;
+  _borderRadius.value = 0;
 } else {
   _coordX.value = getShapeProperties.coordX;
   _coordY.value = getShapeProperties.coordY;
   _sizeWidth.value = getShapeProperties.width;
   _sizeHeight.value = getShapeProperties.height;
+  _opacity.value = getShapeProperties.opacity * 100;
+  _borderRadius.value = ('borderRadius' in getShapeProperties) ? getShapeProperties.borderRadius : 0; 
 }
 
 // So we are actually going to pass it as an emit to the parent with the values
 const editProperties = () => {
-  emit('editProperties', _coordX.value, _coordY.value, _sizeWidth.value, _sizeHeight.value)
+  emit('editProperties', _coordX.value, _coordY.value, _sizeWidth.value, _sizeHeight.value, _opacity.value / 100, _borderRadius.value)
 }
 
 watch(shapeStore.shapes[shapeStore.select_shape], () => {
@@ -43,6 +49,8 @@ watch(shapeStore.shapes[shapeStore.select_shape], () => {
   _coordY.value = getShapeProperties.coordY;
   _sizeWidth.value = getShapeProperties.width;
   _sizeHeight.value = getShapeProperties.height;
+  _opacity.value = getShapeProperties.opacity * 100;
+  _borderRadius.value = ('borderRadius' in getShapeProperties) ? getShapeProperties.borderRadius : 0;
 })
 
 </script>
@@ -125,7 +133,7 @@ watch(shapeStore.shapes[shapeStore.select_shape], () => {
             absoluteStrokeWidth
             class="input-icon"
           />
-          <input class="geist-medium" @keyup.enter="editProperties" placeholder="100" type="text" />
+          <input class="geist-medium" @keyup.enter="editProperties" placeholder="100" type="text" v-model="_opacity" />
         </div>
         <div title="Border radius" class="coords-input-wrapper">
           <Scan
@@ -134,7 +142,7 @@ watch(shapeStore.shapes[shapeStore.select_shape], () => {
             absoluteStrokeWidth
             class="input-icon"
           />
-          <input placeholder="0" @keyup.enter="editProperties" type="text" />
+          <input placeholder="0" @keyup.enter="editProperties" type="text" v-model="_borderRadius" />
         </div>
       </div>
     </div>

@@ -17,7 +17,7 @@ const _Action = () => {
   actionStateStore.changeActionState(ActionState.POINTER);
 }
 
-// Do I add param to the function?? No
+
 const _drawShape = () => {
   actionStateStore.changeActionState(ActionState.DRAWSHAPE)
 }
