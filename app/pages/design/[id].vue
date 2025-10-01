@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { MousePointer2, Frame, Square, ChevronDown, Type, MessageCircle, Sparkles } from 'lucide-vue-next';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 // import { definePageMeta } from '#imports'; We need to make this work without squiggly lines
 import { initializeWebGL } from '../../utils/webgl/initwebgl';
 import { setupBuffer } from '../../utils/webgl/setbuffer';
@@ -29,6 +29,8 @@ const globalStore = useGlobalStore();
 const shapeStore = useShapeStore();
 var cursor_position = ref('0,0');
 const canvasref = ref<HTMLCanvasElement | null>(null);
+
+
 
 onMounted(() => {
   const canvas = canvasref.value;
@@ -272,10 +274,40 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
 }
 
 
+const shareref = ref<HTMLElement | null> (null);
+var s_open = globalStore.shared_state["state"]
+var openedShare = ref("false");
+
+// watch(globalStore.shared_state, (newvalue) => {
+//   console.log("ophh")
+//   console.log(openedShare.value)
+// })
+
+const handleOutsideClick = (event: MouseEvent) => {
+  if (shareref.value && !shareref.value.contains(event.target as Node)) {
+    alert(event.target)
+    globalStore.changeShareOpen({state: false});
+  }
+};
+
+onMounted(() => {
+  if (!shareref.value) return
+  document.addEventListener('click', handleOutsideClick);
+});
+onUnmounted(() => {
+  if (!shareref.value) return
+  document.removeEventListener('click', handleOutsideClick);
+});
+
+
+
 </script>
 
 <template>
   <main class="design-page">
+    <div class="share" v-if="globalStore.sha == 'true'">
+      <ToastsShare ref="shareref" />
+    </div>
     <div class="page-details-part">
       <DesignPageDetail
         @deleteShape="deleteShape"
@@ -306,6 +338,19 @@ main {
   scrollbar-width: none;
   -ms-overflow-style: none;
   position: relative;
+  .share {
+    position: fixed;
+    height: stretch;
+    width: stretch;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    background: rgba(18, 18, 18, 0.4);
+    backdrop-filter: blur(1px);     /* apply blur to whatever is behind */
+    -webkit-backdrop-filter: blur(1px);
+    animation: fadeIn 0.3s ease;
+  }
   .gfx-main {
     display: block;
     width: 100%;
@@ -340,5 +385,13 @@ main {
 }
 main::-webkit-scrollbar {
   display: none;
+}
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 </style>
