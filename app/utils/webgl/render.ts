@@ -37,3 +37,26 @@ export function setOpacityUniform(
     gl.uniform1f(opacityLocation, opacity);
   }
 }
+
+export function setBorderRadiusUniform(
+  gl: WebGL2RenderingContext,
+  program: WebGLProgram,
+  borderRadius: number
+) {
+  const borderRadiusLocation = gl.getUniformLocation(program, "u_borderRadius");
+  if (borderRadiusLocation) {
+    gl.uniform1f(borderRadiusLocation, borderRadius);
+  }
+}
+
+export function setShapeSizeUniform(
+  gl: WebGL2RenderingContext,
+  program: WebGLProgram,
+  width: number,
+  height: number
+) {
+  const shapeSizeLocation = gl.getUniformLocation(program, "u_shapeSize");
+  if (shapeSizeLocation) {
+    gl.uniform2f(shapeSizeLocation, width, height);
+  }
+}

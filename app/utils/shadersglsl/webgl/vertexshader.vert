@@ -2,6 +2,7 @@
 in vec2 a_position; // This is the input position in array we want our shape to have
 uniform vec2 u_resolution;
 uniform mat3 u_viewMatrix;
+out vec2 v_position;
 
 
 // void main() {
@@ -13,6 +14,8 @@ uniform mat3 u_viewMatrix;
 // }
 
 void main() {
+  // Pass position to fragment shader
+  v_position = a_position;
 
   // convert the position from pixels to 0.0 to 1.0
   vec2 zeroToOne = a_position / u_resolution;
