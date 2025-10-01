@@ -13,6 +13,22 @@ const globalStore = useGlobalStore();
 const emit = defineEmits<{
   (e: 'draw-frameRectangle', width: number, height: number): void,
   (e: 'editProperties', coordX: number, coordY: number, sizeWidth: number, sizeHeight: number): void,
+  (e: 'editTextProperties', data: {
+    coordX: number,
+    coordY: number,
+    width: number,
+    height: number,
+    alignTop: boolean,
+    alignBottom: boolean,
+    alignCenter: boolean,
+    justifyLeft: boolean,
+    justifyRight: boolean,
+    justifyCenter: boolean,
+    opacity: number,
+    fontFamily: string,
+    fontSize: number,
+    fontColor: string
+  }): void,
 }>();
 
 const _drawFrameRectangle = (width: number, height: number) => {
@@ -21,6 +37,25 @@ const _drawFrameRectangle = (width: number, height: number) => {
 
 const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number) => {
   emit('editProperties', coordX, coordY, sizeWidth, sizeHeight)
+}
+
+const editTextProperties = (data: {
+  coordX: number,
+  coordY: number,
+  width: number,
+  height: number,
+  alignTop: boolean,
+  alignBottom: boolean,
+  alignCenter: boolean,
+  justifyLeft: boolean,
+  justifyRight: boolean,
+  justifyCenter: boolean,
+  opacity: number,
+  fontFamily: string,
+  fontSize: number,
+  fontColor: string
+}) => {
+  emit('editTextProperties', data)
 }
 
 const openShare = () => {
@@ -64,7 +99,12 @@ const openShare = () => {
       <PropertyShape
         @editProperties="editProperties"
       />
-    </div> 
+    </div>
+    <div class="text-wrapper wrapper-animation" v-if="actionStateStore.action_state == ActionState.TEXT">
+      <PropertyText
+        @editTextProperties="editTextProperties"
+      />
+    </div>
     <div class="export-wrapper">
       <span class="export-text geist-regular">Export</span>
       <button class="export-button">
@@ -180,6 +220,14 @@ const openShare = () => {
   }
   .shape-wrapper {
     // border: 1px solid white;
+    display: flex;
+    flex-direction: column;
+    width: stretch;
+    span {
+      font-size: 13px;
+    }
+  }
+  .text-wrapper {
     display: flex;
     flex-direction: column;
     width: stretch;
