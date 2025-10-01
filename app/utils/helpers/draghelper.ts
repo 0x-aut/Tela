@@ -41,6 +41,7 @@ export function useDragHelper(
     const mouseY = event.clientY;
     if (!isDragging.value) {
       gl.canvas.style.cursor = "default";
+      // shapeStore.clearSelectShape();
       globalStore.change_pos(mouseX, mouseY);
       globalStore.changeTranslation(mouseX, mouseY);
 
@@ -67,6 +68,7 @@ export function useDragHelper(
         gl.canvas.style.cursor = "pointer";
       } else {
         shapeStore.clearHoveredShape();
+        // shapeStore.clearSelectShape();
         gl.canvas.style.cursor = "default";
       }
 
@@ -108,6 +110,8 @@ export function useDragHelper(
       // Because of the center of the shape
       if ((mouseX >= (shapeX - shapeW/2)) && (mouseX <= (shapeX + shapeW/2)) && (mouseY >= (shapeY - shapeH/2)) && (mouseY <= (shapeY + shapeH/2))) {
         selected_shapes.value[key] = shapeStore.shapes[key]
+      } else {
+        shapeStore.clearSelectShape();
       }
     }
 
@@ -124,6 +128,7 @@ export function useDragHelper(
     }
 
     _key.value = select_key;
+    shapeStore.selectShape(_key.value)
 
     console.log("Selected key with record")
     console.log(selected_shapes.value[select_key]);
