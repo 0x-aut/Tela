@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { PanelRight, ChevronRight, Plus, Square, Trash } from 'lucide-vue-next';
+import { computed } from 'vue';
 import { useShapeStore } from '../../stores/shapeStore';
 import { useActionStateStore } from '../../stores/actionstates';
 import { ActionState } from '../../shared/types/ActionState';
@@ -11,6 +12,10 @@ const emit = defineEmits<{
 const shapeStore = useShapeStore();
 const actionStore = useActionStateStore();
 
+const props = defineProps<{
+  zoom?: number
+}>();
+
 const openShapeProperties = (shape_id: string) => {
   actionStore.changeActionState(ActionState.SHAPE);
   shapeStore.selectShape(shape_id);
@@ -20,6 +25,10 @@ const openShapeProperties = (shape_id: string) => {
 const deleteShape = (id: string) => {
   emit('deleteShape', id)
 }
+
+const zoomPercentage = computed(() => {
+  return Math.round((props.zoom || 1) * 100);
+});
 
 </script>
 
@@ -59,13 +68,13 @@ const deleteShape = (id: string) => {
     <!-- There is no nesting feature for now -->
     <div class="shapes">
       <div class="shapes-list" v-for="(shape, id) in shapeStore.shapes" :key="id">
-        <div 
-          :class="[{ 'active': (shapeStore.select_shape === id), 'not-active': (shapeStore.select_shape !== id) }, 'shape-view']" 
+        <div
+          :class="[{ 'active': (shapeStore.select_shape === id), 'not-active': (shapeStore.select_shape !== id) }, 'shape-view']"
         >
-          <button 
-            class="shape-it" 
+          <button
+            class="shape-it"
             @click="openShapeProperties(id)">
-            <Square 
+            <Square
               :size="13"
               :stroke-width="1"
               absoluteStrokeWidth
@@ -73,7 +82,7 @@ const deleteShape = (id: string) => {
             />
             <span class="geist-medium">{{ id }}</span>
           </button>
-          <button 
+          <button
             class="delete-button"
             @click="deleteShape(id)"
           >
@@ -85,6 +94,15 @@ const deleteShape = (id: string) => {
             />
           </button>
         </div>
+      </div>
+    </div>
+    <div class="zoom-controls">
+      <div class="zoom-header">
+        <span class="zoom-label geist-regular">Zoom</span>
+        <span class="zoom-value geist-medium">{{ zoomPercentage }}%</span>
+      </div>
+      <div class="zoom-instruction geist-regular">
+        Scroll to zoom • Shift+drag to pan
       </div>
     </div>
   </div>
@@ -201,6 +219,8 @@ const deleteShape = (id: string) => {
     flex-direction: column;
     padding: 0px 10px;
     margin-top: 10px;
+    flex: 1;
+    overflow-y: auto;
   }
   .shapes-list {
     display: flex;
@@ -248,6 +268,32 @@ const deleteShape = (id: string) => {
           color: rgba(255, 255, 255, 1);
         }
       }
+    }
+  }
+  .zoom-controls {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    margin-top: auto;
+    border-top: 1px solid rgba(240,240,240,0.2);
+    .zoom-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      .zoom-label {
+        font-size: 13px;
+        color: rgba(240, 240, 240, 0.7);
+      }
+      .zoom-value {
+        font-size: 13px;
+        color: #FFFFFF;
+      }
+    }
+    .zoom-instruction {
+      font-size: 11px;
+      color: rgba(240, 240, 240, 0.5);
+      text-align: center;
     }
   }
 }

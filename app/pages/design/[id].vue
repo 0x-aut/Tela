@@ -15,6 +15,7 @@ import { drawCircle, getCircleVertexCount } from '../../utils/shapes/circle';
 import { drawTriangle } from '../../utils/shapes/triangle';
 import { drawLine } from '../../utils/shapes/line';
 import { drawBorder, drawCircleBorder, getCircleBorderVertexCount } from '../../utils/shapes/border';
+import { drawGrid, getGridVertexCount } from '../../utils/shapes/grid';
 import { updateUniforms } from '../../utils/webgl/render';
 import { Camera } from '../../utils/webgl/camera';
 import { useCameraInput } from '../../composables/useCameraInput';
@@ -41,6 +42,7 @@ const shapeStore = useShapeStore();
 const actionStateStore = useActionStateStore();
 var cursor_position = ref('0,0');
 const canvasref = ref<HTMLCanvasElement | null>(null);
+const cameraZoom = ref(1.0);
 
 
 
@@ -50,8 +52,9 @@ onMounted(() => {
     throw new Error("Canvas not found")
   }
 
-  // const camera = new Camera(canvas);
-  // useCameraInput(camera);
+  // Initialize camera for infinite canvas
+  const camera = new Camera(canvas);
+  useCameraInput(camera);
 
   const gl = initializeWebGL(canvas)
 
@@ -86,19 +89,22 @@ onMounted(() => {
       const clickX = event.clientX - rect.left;
       const clickY = event.clientY - rect.top;
 
+      // Convert screen coordinates to world coordinates
+      const worldPos = camera.screenToWorld(clickX, clickY);
+
       // Special handling for line: click-and-drag
       if (actionStateStore.selectedShape === 'line') {
         if (!isDrawingLine) {
           // Start drawing line
           isDrawingLine = true;
-          lineStartX = clickX;
-          lineStartY = clickY;
+          lineStartX = worldPos.x;
+          lineStartY = worldPos.y;
         }
       } else {
         // Default shape dimensions for other shapes
         const defaultSize = 100;
         // Draw shape at click position based on selected shape type
-        drawShapeAtPosition(clickX, clickY, defaultSize, defaultSize, actionStateStore.selectedShape);
+        drawShapeAtPosition(worldPos.x, worldPos.y, defaultSize, defaultSize, actionStateStore.selectedShape);
       }
     }
   };
@@ -112,8 +118,11 @@ onMounted(() => {
       const endX = event.clientX - rect.left;
       const endY = event.clientY - rect.top;
 
+      // Convert screen coordinates to world coordinates
+      const worldPos = camera.screenToWorld(endX, endY);
+
       // Draw line from start to end
-      drawLineFromPoints(lineStartX, lineStartY, endX, endY);
+      drawLineFromPoints(lineStartX, lineStartY, worldPos.x, worldPos.y);
       isDrawingLine = false;
     }
   };
@@ -121,14 +130,26 @@ onMounted(() => {
   canvas.addEventListener('click', handleCanvasClick);
   canvas.addEventListener('mouseup', handleCanvasMouseUp);
 
-  // Unified render loop for all shapes
+  // Unified render loop for all shapes with infinite canvas
   const render = () => {
     resizeCanvas(gl.canvas);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
+    gl.clearColor(0.118, 0.118, 0.118, 1); // #1E1E1E background
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // Render all shapes
+    // Update camera zoom value for UI
+    cameraZoom.value = camera.zoom;
+
+    // Draw background grid for infinite canvas illusion
+    gl.useProgram(program);
+    const gridVao = drawGrid(gl, program, camera, 50, 1);
+    if (gridVao) {
+      updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation, camera);
+      gl.bindVertexArray(gridVao);
+      gl.drawArrays(gl.TRIANGLES, 0, getGridVertexCount(camera, 50));
+    }
+
+    // Render all shapes with viewport culling
     for (const key in shapeStore.shapes) {
       const shape = shapeStore.shapes[key];
       if (!shape) continue;
@@ -138,6 +159,11 @@ onMounted(() => {
       const shapeX = shape.coordX;
       const shapeY = shape.coordY;
       const shapeType = shape.type || 'rectangle';
+
+      // Viewport culling - skip shapes outside visible area
+      if (!camera.isVisible(shapeX, shapeY, shapeWidth, shapeHeight)) {
+        continue;
+      }
 
       gl.useProgram(program);
 
@@ -163,7 +189,7 @@ onMounted(() => {
         vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
       }
 
-      updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation);
+      updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation, camera);
       gl.bindVertexArray(vao);
       gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
       gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
@@ -207,7 +233,7 @@ onMounted(() => {
   }
 
   render();
-  const { cleanup } = useDragHelper(gl, program, render);
+  const { cleanup } = useDragHelper(gl, program, render, camera);
 
   onUnmounted(() => {
     canvas.removeEventListener('click', handleCanvasClick);
@@ -290,6 +316,7 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
     </div>
     <div class="page-details-part">
       <DesignPageDetail
+        :zoom="cameraZoom"
         @deleteShape="deleteShape"
       />
     </div>
