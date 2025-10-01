@@ -28,7 +28,9 @@ const deleteShape = (id: string) => {
   <div class="page-detail-wrapper">
     <div class="header-wrapper">
       <div class="logo-title">
-        <div class="logo"></div>
+        <div class="logo">
+          <SvgLogo height="28" width="28" />
+        </div>
         <input class="design-title geist-medium" placeholder="First design" />
       </div>
       <button class="action-icon">
@@ -160,8 +162,11 @@ const deleteShape = (id: string) => {
       .logo {
         width: 32px;
         height: 32px;
-        background: #505050;
+        background: transparent;
         border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .design-title {
         all: unset;
