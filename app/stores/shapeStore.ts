@@ -15,10 +15,19 @@ export const useShapeStore = defineStore(
   () => {
     const shapes = ref<Record<string, Shape>>({});
     const select_shape = ref<string>(""); // Or it could simply be a string pointing to the shapes
+    const hovered_shape = ref<string>(""); // Track the currently hovered shape
     // Shapes will be something like: { "rect-1": Shape(x, y, h, w), }
 
     function selectShape(shape_id: string) {
       select_shape.value = shape_id;
+    }
+
+    function setHoveredShape(shape_id: string) {
+      hovered_shape.value = shape_id;
+    }
+
+    function clearHoveredShape() {
+      hovered_shape.value = "";
     }
 
     function addShape(shape: Shape) {
@@ -51,8 +60,9 @@ export const useShapeStore = defineStore(
       }
     }
 
-    return { 
-      shapes, addShape, deleteAllShapes, removeShape, editShape, select_shape, selectShape
+    return {
+      shapes, addShape, deleteAllShapes, removeShape, editShape, select_shape, selectShape,
+      hovered_shape, setHoveredShape, clearHoveredShape
     }
   },
   {
