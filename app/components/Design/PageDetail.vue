@@ -60,9 +60,11 @@ const deleteShape = (id: string) => {
     <div class="shapes">
       <div class="shapes-list" v-for="(shape, id) in shapeStore.shapes" :key="id">
         <div 
-          class="shape-view"
+          :class="[{ 'active': (shapeStore.select_shape === id), 'not-active': (shapeStore.select_shape !== id) }, 'shape-view']" 
         >
-          <button class="shape-it" @click="openShapeProperties(id)">
+          <button 
+            class="shape-it" 
+            @click="openShapeProperties(id)">
             <Square 
               :size="13"
               :stroke-width="1"
@@ -90,6 +92,34 @@ const deleteShape = (id: string) => {
 
 
 <style lang="scss" scoped>
+.active {
+  background: rgba(13, 153, 255, 0.8);
+  .shape-it {
+    span {
+      opacity: 1;
+      color: #FFFFFF;
+    }
+    .shape-icon {
+      color: rgba(255, 255, 255, 1);
+      opacity: 1
+    }
+  }
+}
+.inactive {
+  background-color: transparent;
+  &:hover {
+    background: rgba(240, 240, 240, 0.1);
+    .shape-it {
+      span {
+        opacity: 1;
+      }
+      .shape-icon {
+        opacity: 1;
+      }
+    }
+  }
+}
+
 .action-icon {
   all:unset;
   cursor: pointer;
@@ -175,7 +205,6 @@ const deleteShape = (id: string) => {
   .shapes-list {
     display: flex;
     .shape-view {
-      all: unset;
       justify-content: space-between;
       cursor: pointer;
       display: flex;
@@ -185,11 +214,15 @@ const deleteShape = (id: string) => {
       padding: 5px 10px;
       transition: all 0.2s ease-out;
       .shape-it {
-        all: unset;
+        color: #FFFFFF;
+        border: 0;
+        outline: 0;
+        background:transparent;
         width: stretch;
         display: flex;
         align-items: center;
         column-gap: 10px;
+        transition: background-color 0.2s ease-in-out;
         .shape-icon {
           color: #FFFFFF;
           opacity: 0.7;
@@ -203,25 +236,16 @@ const deleteShape = (id: string) => {
         }
       }
       .delete-button {
-        all: unset;
+        border: 0;
+        outline: 0;
         padding: 2.5px 5px;
         border-radius: 2.5px;
+        background: transparent;
         cursor: pointer;
-        color: rgba(240, 240, 240, 0.1);
+        color: rgba(240, 240, 240, 0.6);
         transition: 0.2s ease-in;
         &:hover {
           color: rgba(255, 255, 255, 1);
-        }
-      }
-      &:hover {
-        background: rgba(240, 240, 240, 0.1);
-        .shape-it {
-          span {
-            opacity: 1;
-          }
-          .shape-icon {
-            opacity: 1;
-          }
         }
       }
     }

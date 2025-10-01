@@ -21,6 +21,9 @@ export const useShapeStore = defineStore(
     function selectShape(shape_id: string) {
       select_shape.value = shape_id;
     }
+    function clearSelectShape() {
+      select_shape.value = ""
+    }
 
     function setHoveredShape(shape_id: string) {
       hovered_shape.value = shape_id;
@@ -62,7 +65,7 @@ export const useShapeStore = defineStore(
 
     return {
       shapes, addShape, deleteAllShapes, removeShape, editShape, select_shape, selectShape,
-      hovered_shape, setHoveredShape, clearHoveredShape
+      hovered_shape, setHoveredShape, clearHoveredShape, clearSelectShape
     }
   },
   {

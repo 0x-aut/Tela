@@ -4,7 +4,66 @@ import { useGlobalStore } from '../../stores/global';
 import { useShapeStore } from '../../stores/shapeStore'
 import type { Shape } from '~/shared/types/ShapeTypes/Shape';
 
+// Type for resize edge detection
+type ResizeEdge = 'top' | 'right' | 'bottom' | 'left' | null;
 
+// Border threshold for resize detection (in pixels)
+const RESIZE_THRESHOLD = 8;
+
+/**
+ * Detects if the mouse is near an edge of a shape for resizing
+ * @param mouseX - Mouse X position
+ * @param mouseY - Mouse Y position
+ * @param shape - The shape to check
+ * @returns The edge the mouse is near, or null if not near any edge
+ */
+function detectResizeEdge(mouseX: number, mouseY: number, shape: Shape): ResizeEdge {
+  const shapeX = shape.coordX;
+  const shapeY = shape.coordY;
+  const shapeH = shape.height;
+  const shapeW = shape.width;
+
+  const left = shapeX - shapeW / 2;
+  const right = shapeX + shapeW / 2;
+  const top = shapeY - shapeH / 2;
+  const bottom = shapeY + shapeH / 2;
+
+  // Check if mouse is within the shape bounds
+  const isInBounds = mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom;
+  if (!isInBounds) return null;
+
+  // Check if mouse is near any edge (within threshold)
+  const nearLeft = mouseX >= left && mouseX <= left + RESIZE_THRESHOLD;
+  const nearRight = mouseX >= right - RESIZE_THRESHOLD && mouseX <= right;
+  const nearTop = mouseY >= top && mouseY <= top + RESIZE_THRESHOLD;
+  const nearBottom = mouseY >= bottom - RESIZE_THRESHOLD && mouseY <= bottom;
+
+  // Priority: sides before top/bottom for corner cases
+  if (nearLeft) return 'left';
+  if (nearRight) return 'right';
+  if (nearTop) return 'top';
+  if (nearBottom) return 'bottom';
+
+  return null;
+}
+
+/**
+ * Gets the appropriate cursor style for a resize edge
+ * @param edge - The edge being resized
+ * @returns The CSS cursor style
+ */
+function getResizeCursor(edge: ResizeEdge): string {
+  switch (edge) {
+    case 'top':
+    case 'bottom':
+      return 'ns-resize';
+    case 'left':
+    case 'right':
+      return 'ew-resize';
+    default:
+      return 'default';
+  }
+}
 
 export function useDragHelper(
   gl: WebGL2RenderingContext,
@@ -33,36 +92,108 @@ export function useDragHelper(
   // We want to make the drag function so we can drag
   // Drag function will change the positioning which we have to return
   const isDragging = ref<boolean>(false);
-  const c_pos = ref("0,0") 
+  const isResizing = ref<boolean>(false);
+  const resizeEdge = ref<ResizeEdge>(null);
+  const c_pos = ref("0,0")
   var _key = ref("")
+
+  // Store initial dimensions for resize
+  const initialWidth = ref<number>(0);
+  const initialHeight = ref<number>(0);
+  const initialMouseX = ref<number>(0);
+  const initialMouseY = ref<number>(0);
 
   function mousemove(event) {
     const mouseX = event.clientX;
     const mouseY = event.clientY;
-    if (!isDragging.value) {
+
+    // Handle resizing
+    if (isResizing.value && _key.value && resizeEdge.value) {
+      const shape = shapeStore.shapes[_key.value];
+      if (!shape) return;
+
+      const deltaX = mouseX - initialMouseX.value;
+      const deltaY = mouseY - initialMouseY.value;
+
+      let newWidth = initialWidth.value;
+      let newHeight = initialHeight.value;
+      let newCoordX = shape.coordX;
+      let newCoordY = shape.coordY;
+
+      // Apply resize based on edge
+      switch (resizeEdge.value) {
+        case 'right':
+          newWidth = Math.max(20, initialWidth.value + deltaX);
+          newCoordX = shape.coordX - initialWidth.value / 2 + newWidth / 2;
+          break;
+        case 'left':
+          newWidth = Math.max(20, initialWidth.value - deltaX);
+          newCoordX = shape.coordX + initialWidth.value / 2 - newWidth / 2;
+          break;
+        case 'bottom':
+          newHeight = Math.max(20, initialHeight.value + deltaY);
+          newCoordY = shape.coordY - initialHeight.value / 2 + newHeight / 2;
+          break;
+        case 'top':
+          newHeight = Math.max(20, initialHeight.value - deltaY);
+          newCoordY = shape.coordY + initialHeight.value / 2 - newHeight / 2;
+          break;
+      }
+
+      shapeStore.editShape(_key.value, {
+        width: newWidth,
+        height: newHeight,
+        coordX: newCoordX,
+        coordY: newCoordY
+      });
+      renderFunction();
+      return;
+    }
+
+    // Handle dragging
+    if (isDragging.value) {
+      var coordX = mouseX;
+      var coordY = mouseY;
+      shapeStore.editShape(_key.value, {coordX: coordX, coordY: coordY});
+      renderFunction();
+      return;
+    }
+
+    // Handle hover detection and cursor changes
+    if (!isDragging.value && !isResizing.value) {
       gl.canvas.style.cursor = "default";
       globalStore.change_pos(mouseX, mouseY);
       globalStore.changeTranslation(mouseX, mouseY);
 
       // Check if mouse is hovering over any shape
       let hoveredShapeKey = "";
+      let detectedEdge: ResizeEdge = null;
+
       for (const key in shapeStore.shapes) {
         if (!shapeStore.shapes[key]) continue;
 
-        var shapeX = shapeStore.shapes[key].coordX;
-        var shapeY = shapeStore.shapes[key].coordY;
-        var shapeH = shapeStore.shapes[key].height;
-        var shapeW = shapeStore.shapes[key].width;
+        const shape = shapeStore.shapes[key];
+        var shapeX = shape.coordX;
+        var shapeY = shape.coordY;
+        var shapeH = shape.height;
+        var shapeW = shape.width;
 
         // Check if mouse is within shape bounds
         if ((mouseX >= (shapeX - shapeW/2)) && (mouseX <= (shapeX + shapeW/2)) &&
             (mouseY >= (shapeY - shapeH/2)) && (mouseY <= (shapeY + shapeH/2))) {
           hoveredShapeKey = key;
+
+          // If shape is selected or hovered, check for resize edges
+          if (key === shapeStore.select_shape || key === shapeStore.hovered_shape) {
+            detectedEdge = detectResizeEdge(mouseX, mouseY, shape);
+          }
         }
       }
 
-      // Update hovered shape in store
-      if (hoveredShapeKey) {
+      // Update cursor based on detected edge
+      if (detectedEdge) {
+        gl.canvas.style.cursor = getResizeCursor(detectedEdge);
+      } else if (hoveredShapeKey) {
         shapeStore.setHoveredShape(hoveredShapeKey);
         gl.canvas.style.cursor = "pointer";
       } else {
@@ -71,12 +202,6 @@ export function useDragHelper(
       }
 
       renderFunction();
-    }
-    if(isDragging.value) {
-      var coordX = mouseX;
-      var coordY = mouseY;
-      shapeStore.editShape(_key.value, {coordX: coordX, coordY: coordY});
-      renderFunction()
     }
   }
 
@@ -98,16 +223,19 @@ export function useDragHelper(
         return
       }
 
-      var shapeX = shapeStore.shapes[key].coordX;
-      var shapeY = shapeStore.shapes[key].coordY;
-      var shapeH = shapeStore.shapes[key].height;
-      var shapeW = shapeStore.shapes[key].height;
+      const shape = shapeStore.shapes[key];
+      var shapeX = shape.coordX;
+      var shapeY = shape.coordY;
+      var shapeH = shape.height;
+      var shapeW = shape.width;
 
 
       // We need to filter the shapes based on the positions here
       // Because of the center of the shape
       if ((mouseX >= (shapeX - shapeW/2)) && (mouseX <= (shapeX + shapeW/2)) && (mouseY >= (shapeY - shapeH/2)) && (mouseY <= (shapeY + shapeH/2))) {
-        selected_shapes.value[key] = shapeStore.shapes[key]
+        selected_shapes.value[key] = shape;
+      } else {
+        shapeStore.clearSelectShape();
       }
     }
 
@@ -124,12 +252,29 @@ export function useDragHelper(
     }
 
     _key.value = select_key;
+    shapeStore.selectShape(_key.value)
 
     console.log("Selected key with record")
     console.log(selected_shapes.value[select_key]);
 
-    isDragging.value = true;
-    gl.canvas.style.cursor = "pointer";
+    // Check if we're clicking on a resize edge
+    const shape = shapeStore.shapes[_key.value];
+    const edge = detectResizeEdge(mouseX, mouseY, shape);
+
+    if (edge) {
+      // Start resizing
+      isResizing.value = true;
+      resizeEdge.value = edge;
+      initialWidth.value = shape.width;
+      initialHeight.value = shape.height;
+      initialMouseX.value = mouseX;
+      initialMouseY.value = mouseY;
+      gl.canvas.style.cursor = getResizeCursor(edge);
+    } else {
+      // Start dragging
+      isDragging.value = true;
+      gl.canvas.style.cursor = "pointer";
+    }
 
 
     // if (Object.keys(selected_shapes.value).length) {
@@ -155,6 +300,8 @@ export function useDragHelper(
     gl.canvas.style.cursor = "default";
     clearSelectedList();
     isDragging.value = false;
+    isResizing.value = false;
+    resizeEdge.value = null;
   }
 
   function mouseleave(event) {
@@ -162,6 +309,8 @@ export function useDragHelper(
     clearSelectedList();
     shapeStore.clearHoveredShape();
     isDragging.value = false;
+    isResizing.value = false;
+    resizeEdge.value = null;
   }
 
   gl.canvas.addEventListener('mousemove', mousemove);
