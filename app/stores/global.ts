@@ -9,6 +9,13 @@ export const useGlobalStore = defineStore(
       cursor_position.value = `${x}, ${y}`
     }
 
+    // const shareOpen = ref(false);
+    const shared_state = ref({state: false})
+
+    function changeShareOpen(id: {state:boolean}) {
+      shared_state.value = id
+    }
+
     const translation = ref<Array<number>>([0, 0]);
     function changeTranslation(x: number, y: number) {
       translation.value = [x, y];
@@ -29,9 +36,12 @@ export const useGlobalStore = defineStore(
       far: ref(2000)
     }) // Ref is used for individual reactivity - will fact check and see perf hits later
 
-    function changeCameraState() {}
-
-    return { cursor_position, change_pos, translation, changeTranslation, deleteTrans }
+    return { 
+      cursor_position, change_pos, 
+      translation, changeTranslation,
+      deleteTrans,
+      changeShareOpen, shared_state
+    }
   },
   {
     persist: true,

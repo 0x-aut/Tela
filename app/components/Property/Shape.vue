@@ -4,7 +4,7 @@ import { useGlobalStore } from '../../stores/global';
 import { useActionStateStore } from '../../stores/actionstates';
 import { useShapeStore } from '../../stores/shapeStore';
 import { ref, watch } from 'vue';
-import { MoveHorizontal, MoveVertical } from 'lucide-vue-next';
+import { MoveHorizontal, MoveVertical, Grip, Scan } from 'lucide-vue-next';
 
 
 const emit = defineEmits<{
@@ -85,7 +85,8 @@ watch(shapeStore.shapes[shapeStore.select_shape], () => {
       </div>
     </div>
     <!-- A lot of things confusing here but i'll allow it -->
-     <div class="position-area areadiv">
+     <!-- Size container -->
+    <div class="position-area areadiv">
       <span class="geist-regular areadiv-header">Size</span>
       <div class="coords-wrapper">
         <div class="coords-input-wrapper">
@@ -111,6 +112,30 @@ watch(shapeStore.shapes[shapeStore.select_shape], () => {
         <button class="area-button-long">
           <span class="geist-regular">Connect both size parts</span>
         </button>
+      </div>
+    </div>
+    <!-- Appearance container -->
+    <div class="position-area areadiv">
+      <span class="geist-regular areadiv-header">Appearance</span>
+      <div class="coords-wrapper">
+        <div title="Opacity" class="coords-input-wrapper">
+          <Grip
+            :size="13"
+            :stroke-width="1"
+            absoluteStrokeWidth
+            class="input-icon"
+          />
+          <input class="geist-medium" @keyup.enter="editProperties" placeholder="100" type="text" />
+        </div>
+        <div title="Border radius" class="coords-input-wrapper">
+          <Scan
+            :size="13"
+            :stroke-width="1"
+            absoluteStrokeWidth
+            class="input-icon"
+          />
+          <input placeholder="0" @keyup.enter="editProperties" type="text" />
+        </div>
       </div>
     </div>
   </div>
