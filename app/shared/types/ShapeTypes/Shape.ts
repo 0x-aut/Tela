@@ -5,6 +5,7 @@ export class Shape {
   width: number
   coordX: number
   coordY: number
+  color: string
 
   constructor(
     id: string,
@@ -12,7 +13,8 @@ export class Shape {
     width: number,
     coordX: number,
     coordY: number,
-    type: string = 'rectangle'
+    type: string = 'rectangle',
+    color: string = '#FFFFFF'
   ) {
     this.id = id
     this.type = type
@@ -20,6 +22,7 @@ export class Shape {
     this.width = width
     this.coordX = coordX
     this.coordY = coordY
+    this.color = color
   }
 
   // function hitBox(

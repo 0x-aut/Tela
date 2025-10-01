@@ -8,7 +8,7 @@ import { MoveHorizontal, MoveVertical, Grip, Scan } from 'lucide-vue-next';
 
 
 const emit = defineEmits<{
-  (e: 'editProperties', coordX: number, coordY: number, sizeWidth: number, sizeHeight: number): void
+  (e: 'editProperties', coordX: number, coordY: number, sizeWidth: number, sizeHeight: number, color: string): void
 }>(); // There's gotta be an easy way but we will use this for now
 
 const globalStore = useGlobalStore();
@@ -19,6 +19,7 @@ var _coordX = ref<number>(0);
 var _coordY = ref<number>(0);
 var _sizeWidth = ref<number>(0);
 var _sizeHeight = ref<number>(0);
+var _color = ref<string>('#FFFFFF');
 
 const getShapeProperties = shapeStore.shapes[shapeStore.select_shape];
 if (!getShapeProperties) {
@@ -26,16 +27,18 @@ if (!getShapeProperties) {
   _coordY.value = 0;
   _sizeWidth.value = 0;
   _sizeHeight.value = 0;
+  _color.value = '#FFFFFF';
 } else {
   _coordX.value = getShapeProperties.coordX;
   _coordY.value = getShapeProperties.coordY;
   _sizeWidth.value = getShapeProperties.width;
   _sizeHeight.value = getShapeProperties.height;
+  _color.value = getShapeProperties.color;
 }
 
 // So we are actually going to pass it as an emit to the parent with the values
 const editProperties = () => {
-  emit('editProperties', _coordX.value, _coordY.value, _sizeWidth.value, _sizeHeight.value)
+  emit('editProperties', _coordX.value, _coordY.value, _sizeWidth.value, _sizeHeight.value, _color.value)
 }
 
 watch(shapeStore.shapes[shapeStore.select_shape], () => {
@@ -43,6 +46,7 @@ watch(shapeStore.shapes[shapeStore.select_shape], () => {
   _coordY.value = getShapeProperties.coordY;
   _sizeWidth.value = getShapeProperties.width;
   _sizeHeight.value = getShapeProperties.height;
+  _color.value = getShapeProperties.color;
 })
 
 </script>
@@ -118,6 +122,9 @@ watch(shapeStore.shapes[shapeStore.select_shape], () => {
     <div class="position-area areadiv">
       <span class="geist-regular areadiv-header">Appearance</span>
       <div class="coords-wrapper">
+        <div title="Color" class="coords-input-wrapper">
+          <input class="geist-medium" @keyup.enter="editProperties" placeholder="#FFFFFF" type="color" v-model="_color" />
+        </div>
         <div title="Opacity" class="coords-input-wrapper">
           <Grip
             :size="13"
