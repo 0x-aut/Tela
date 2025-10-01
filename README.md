@@ -14,5 +14,4 @@ TODO:
 
 
 Thoughts
-- We want to be able to login to our design page right?
 - And save our design to convex and setup webhooks for convex using a dynamic link

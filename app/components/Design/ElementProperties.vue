@@ -2,9 +2,12 @@
 import { ChevronDown, Plus } from 'lucide-vue-next';
 import { useActionStateStore } from '../../stores/actionstates';
 import { ActionState } from '../../shared/types/ActionState';
+import { useSession } from '../../lib/auth-client';
+import { useGlobalStore } from '../../stores/global';
 
 
 const actionStateStore = useActionStateStore();
+const globalStore = useGlobalStore();
 
 // There will be another order magnitude emit here to go to the parent [id].vue
 const emit = defineEmits<{
@@ -20,6 +23,11 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
   emit('editProperties', coordX, coordY, sizeWidth, sizeHeight)
 }
 
+const openShare = () => {
+  // Open the share toast
+  globalStore.changeShareOpen({ state: true });
+  console.log(globalStore.shared_state)
+}
 
 </script>
 
@@ -38,7 +46,7 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
           />
         </button>
       </div>
-      <button class="share-button">
+      <button class="share-button" @click="openShare">
         <span class="geist-medium">Share</span>
       </button>
     </div>
@@ -148,6 +156,7 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
       padding: 4px 16px;
       font-size: 14px;
       height: 24px;
+      cursor: pointer;
     }
   }
   .element-type-wrapper {
