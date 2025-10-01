@@ -274,39 +274,12 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
 }
 
 
-const shareref = ref<HTMLElement | null> (null);
-var s_open = globalStore.shared_state["state"]
-var openedShare = ref("false");
-
-// watch(globalStore.shared_state, (newvalue) => {
-//   console.log("ophh")
-//   console.log(openedShare.value)
-// })
-
-const handleOutsideClick = (event: MouseEvent) => {
-  if (shareref.value && !shareref.value.contains(event.target as Node)) {
-    alert(event.target)
-    globalStore.changeShareOpen({state: false});
-  }
-};
-
-onMounted(() => {
-  if (!shareref.value) return
-  document.addEventListener('click', handleOutsideClick);
-});
-onUnmounted(() => {
-  if (!shareref.value) return
-  document.removeEventListener('click', handleOutsideClick);
-});
-
-
-
 </script>
 
 <template>
   <main class="design-page">
-    <div class="share" v-if="globalStore.sha == 'true'">
-      <ToastsShare ref="shareref" />
+    <div class="share" v-if="globalStore.shared_state.state">
+      <ToastsShare />
     </div>
     <div class="page-details-part">
       <DesignPageDetail
