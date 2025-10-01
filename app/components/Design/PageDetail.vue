@@ -1,8 +1,10 @@
 <script lang="ts" setup>
-import { PanelRight, ChevronRight, Plus, Square, Trash } from 'lucide-vue-next';
+import { PanelRight, ChevronRight, Plus, Square, Trash, ZoomIn, ZoomOut } from 'lucide-vue-next';
 import { useShapeStore } from '../../stores/shapeStore';
 import { useActionStateStore } from '../../stores/actionstates';
+import { useGlobalStore } from '../../stores/global';
 import { ActionState } from '../../shared/types/ActionState';
+import { computed, ref } from 'vue';
 
 const emit = defineEmits<{
   (e: 'deleteShape', id: string): void
@@ -10,6 +12,7 @@ const emit = defineEmits<{
 
 const shapeStore = useShapeStore();
 const actionStore = useActionStateStore();
+const globalStore = useGlobalStore();
 
 const openShapeProperties = (shape_id: string) => {
   actionStore.changeActionState(ActionState.SHAPE);
@@ -20,6 +23,35 @@ const openShapeProperties = (shape_id: string) => {
 const deleteShape = (id: string) => {
   emit('deleteShape', id)
 }
+
+// Zoom display and editing
+const isEditingZoom = ref(false);
+const editZoomValue = ref('100');
+
+const zoomPercentage = computed(() => {
+  return Math.round(globalStore.zoom * 100);
+});
+
+const startEditingZoom = () => {
+  isEditingZoom.value = true;
+  editZoomValue.value = String(zoomPercentage.value);
+};
+
+const finishEditingZoom = () => {
+  isEditingZoom.value = false;
+  const newZoom = parseFloat(editZoomValue.value) / 100;
+  if (!isNaN(newZoom) && newZoom > 0) {
+    globalStore.setZoom(newZoom);
+  }
+};
+
+const handleZoomKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Enter') {
+    finishEditingZoom();
+  } else if (e.key === 'Escape') {
+    isEditingZoom.value = false;
+  }
+};
 
 </script>
 
@@ -59,11 +91,11 @@ const deleteShape = (id: string) => {
     <!-- There is no nesting feature for now -->
     <div class="shapes">
       <div class="shapes-list" v-for="(shape, id) in shapeStore.shapes" :key="id">
-        <div 
+        <div
           class="shape-view"
         >
           <button class="shape-it" @click="openShapeProperties(id)">
-            <Square 
+            <Square
               :size="13"
               :stroke-width="1"
               absoluteStrokeWidth
@@ -71,7 +103,7 @@ const deleteShape = (id: string) => {
             />
             <span class="geist-medium">{{ id }}</span>
           </button>
-          <button 
+          <button
             class="delete-button"
             @click="deleteShape(id)"
           >
@@ -83,6 +115,28 @@ const deleteShape = (id: string) => {
             />
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Zoom display -->
+    <div class="zoom-display">
+      <div class="zoom-controls">
+        <span class="zoom-label geist-medium">Zoom</span>
+        <div class="zoom-value" v-if="!isEditingZoom" @click="startEditingZoom">
+          <span class="geist-regular">{{ zoomPercentage }}%</span>
+        </div>
+        <input
+          v-else
+          v-model="editZoomValue"
+          @blur="finishEditingZoom"
+          @keydown="handleZoomKeydown"
+          class="zoom-input geist-regular"
+          type="text"
+          autofocus
+        />
+      </div>
+      <div class="zoom-hint geist-regular">
+        <span>Scroll to zoom • Shift+drag to pan</span>
       </div>
     </div>
   </div>
@@ -224,6 +278,57 @@ const deleteShape = (id: string) => {
           }
         }
       }
+    }
+  }
+  .zoom-display {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 15px;
+    border-top: 1px solid rgba(240,240,240,0.2);
+    background: #2C2C2C;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    .zoom-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      .zoom-label {
+        font-size: 13px;
+        color: #F0F0F0;
+        opacity: 0.7;
+      }
+      .zoom-value {
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        &:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+        span {
+          font-size: 13px;
+          color: #FFFFFF;
+        }
+      }
+      .zoom-input {
+        all: unset;
+        width: 60px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        font-size: 13px;
+        color: #FFFFFF;
+        text-align: right;
+      }
+    }
+    .zoom-hint {
+      font-size: 11px;
+      color: #F0F0F0;
+      opacity: 0.5;
+      text-align: center;
     }
   }
 }

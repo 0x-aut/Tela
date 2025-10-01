@@ -36,11 +36,24 @@ export const useGlobalStore = defineStore(
       far: ref(2000)
     }) // Ref is used for individual reactivity - will fact check and see perf hits later
 
-    return { 
-      cursor_position, change_pos, 
+    const zoom = ref(1.0);
+    const cameraPosition = ref({ x: 0, y: 0 });
+
+    function setZoom(value: number) {
+      zoom.value = Math.max(0.1, Math.min(10, value)); // Clamp between 0.1 and 10
+    }
+
+    function setCameraPosition(x: number, y: number) {
+      cameraPosition.value = { x, y };
+    }
+
+    return {
+      cursor_position, change_pos,
       translation, changeTranslation,
       deleteTrans,
-      changeShareOpen, shared_state
+      changeShareOpen, shared_state,
+      zoom, setZoom,
+      cameraPosition, setCameraPosition
     }
   },
   {

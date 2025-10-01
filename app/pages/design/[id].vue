@@ -39,7 +39,8 @@ const actionStateStore = useActionStateStore();
 var cursor_position = ref('0,0');
 const canvasref = ref<HTMLCanvasElement | null>(null);
 
-
+// Global camera instance
+let camera: Camera | null = null;
 
 onMounted(() => {
   const canvas = canvasref.value;
@@ -47,8 +48,8 @@ onMounted(() => {
     throw new Error("Canvas not found")
   }
 
-  // const camera = new Camera(canvas);
-  // useCameraInput(camera);
+  // Initialize camera
+  camera = new Camera(canvas);
 
   const gl = initializeWebGL(canvas)
 
@@ -71,23 +72,19 @@ onMounted(() => {
   // Add canvas click event handler for drawing shapes
   const handleCanvasClick = (event: MouseEvent) => {
     if (actionStateStore.action_state === ActionState.DRAWSHAPE) {
-      const rect = canvas.getBoundingClientRect();
-      const clickX = event.clientX - rect.left;
-      const clickY = event.clientY - rect.top;
-
       // Special handling for line: click-and-drag
       if (actionStateStore.selectedShape === 'line') {
         if (!isDrawingLine) {
-          // Start drawing line
+          // Start drawing line - store client coords
           isDrawingLine = true;
-          lineStartX = clickX;
-          lineStartY = clickY;
+          lineStartX = event.clientX;
+          lineStartY = event.clientY;
         }
       } else {
         // Default shape dimensions for other shapes
         const defaultSize = 100;
         // Draw shape at click position based on selected shape type
-        drawShapeAtPosition(clickX, clickY, defaultSize, defaultSize, actionStateStore.selectedShape);
+        drawShapeAtPosition(event.clientX, event.clientY, defaultSize, defaultSize, actionStateStore.selectedShape);
       }
     }
   };
@@ -97,12 +94,8 @@ onMounted(() => {
     if (actionStateStore.action_state === ActionState.DRAWSHAPE &&
         actionStateStore.selectedShape === 'line' &&
         isDrawingLine) {
-      const rect = canvas.getBoundingClientRect();
-      const endX = event.clientX - rect.left;
-      const endY = event.clientY - rect.top;
-
-      // Draw line from start to end
-      drawLineFromPoints(lineStartX, lineStartY, endX, endY);
+      // Draw line from start to end - pass client coords
+      drawLineFromPoints(lineStartX, lineStartY, event.clientX, event.clientY);
       isDrawingLine = false;
     }
   };
@@ -110,68 +103,71 @@ onMounted(() => {
   canvas.addEventListener('click', handleCanvasClick);
   canvas.addEventListener('mouseup', handleCanvasMouseUp);
 
-  if (Object.keys(shapeStore.shapes).length > 0) {
-    console.log("Shapes exist")
-    console.log(shapeStore.shapes)
+  // Unified render loop with camera and culling
+  const renderAllShapes = () => {
+    if (!camera) return;
+
+    resizeCanvas(gl.canvas);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.useProgram(program);
+
+    // Update uniforms with camera
+    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation, camera);
+
+    // Render all shapes with culling
     for (const key in shapeStore.shapes) {
-      const render = () => {
-        const shape = shapeStore.shapes[key];
-        const shapeHeight = shape.height;
-        const shapeWidth = shape.width;
-        const shapeX = shape.coordX;
-        const shapeY = shape.coordY;
-        const shapeType = shape.type || 'rectangle';
+      const shape = shapeStore.shapes[key];
+      const shapeHeight = shape.height;
+      const shapeWidth = shape.width;
+      const shapeX = shape.coordX;
+      const shapeY = shape.coordY;
+      const shapeType = shape.type || 'rectangle';
 
-        resizeCanvas(gl.canvas);
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        gl.clearColor(0, 0, 0, 0);
-        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-        gl.useProgram(program);
-
-        let vao;
-        let vertexCount = 6;
-
-        // Draw based on shape type
-        if (shapeType === 'circle') {
-          vao = drawCircle(gl, program, shapeX, shapeY, shapeWidth / 2);
-          vertexCount = getCircleVertexCount();
-        } else if (shapeType === 'triangle') {
-          vao = drawTriangle(gl, program, shapeX, shapeY, shapeWidth, shapeHeight);
-          vertexCount = 3;
-        } else if (shapeType === 'line') {
-          const lineShape = shape as any; // Cast to access line-specific properties
-          if (lineShape.startX !== undefined) {
-            vao = drawLine(gl, program, lineShape.startX, lineShape.startY, lineShape.endX, lineShape.endY, lineShape.thickness || 2);
-          } else {
-            // Fallback for old line format
-            vao = drawLine(gl, program, shapeX - shapeWidth/2, shapeY, shapeX + shapeWidth/2, shapeY, shape.height);
-          }
-          vertexCount = 6;
-        } else {
-          vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
-        }
-
-        updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
-        gl.bindVertexArray(vao);
-
-        gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-
-        // Pass camera view matrix
-        // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
-
-        // gl.uniform4fv(colorLocation, color);
-        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
-        requestAnimationFrame(render);
+      // Culling: Skip shapes outside camera view
+      if (!camera.isShapeVisible(shapeX, shapeY, shapeWidth, shapeHeight)) {
+        continue;
       }
-      render()
-      const { cleanup } = useDragHelper(gl, program, render);
+
+      let vao;
+      let vertexCount = 6;
+
+      // Draw based on shape type
+      if (shapeType === 'circle') {
+        vao = drawCircle(gl, program, shapeX, shapeY, shapeWidth / 2);
+        vertexCount = getCircleVertexCount();
+      } else if (shapeType === 'triangle') {
+        vao = drawTriangle(gl, program, shapeX, shapeY, shapeWidth, shapeHeight);
+        vertexCount = 3;
+      } else if (shapeType === 'line') {
+        const lineShape = shape as any;
+        if (lineShape.startX !== undefined) {
+          vao = drawLine(gl, program, lineShape.startX, lineShape.startY, lineShape.endX, lineShape.endY, lineShape.thickness || 2);
+        } else {
+          vao = drawLine(gl, program, shapeX - shapeWidth/2, shapeY, shapeX + shapeWidth/2, shapeY, shape.height);
+        }
+        vertexCount = 6;
+      } else {
+        vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
+      }
+
+      gl.bindVertexArray(vao);
+      gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
     }
 
-  } else {
-    console.log("No shapes to render")
-    console.log(shapeStore.shapes)
-  }
+    requestAnimationFrame(renderAllShapes);
+  };
+
+  // Start render loop
+  renderAllShapes();
+
+  // Setup camera input handlers
+  useCameraInput(camera, renderAllShapes);
+
+  // Setup drag helper with new render function
+  const { cleanup } = useDragHelper(gl, program, renderAllShapes);
 
   onUnmounted(() => {
     canvas.removeEventListener('click', handleCanvasClick);
@@ -180,330 +176,88 @@ onMounted(() => {
 })
 
 const drawShapeAtPosition = (clickX: number, clickY: number, width: number, height: number, shapeType: string = 'rectangle') => {
-  const canvas = canvasref.value;
-  if (!canvas) return
+  if (!camera) return;
 
-  const gl = initializeWebGL(canvas)
-
-  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
-  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
-  var program = createProgram(gl, vertexShader, fragmentShader);
-
-  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
-  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
-
-  const render = () => {
-    resizeCanvas(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-
-    gl.useProgram(program);
-
-    let vao;
-    let vertexCount = 6;
-
-    // Draw based on shape type (line is handled separately with drawLineFromPoints)
-    if (shapeType === 'circle') {
-      vao = drawCircle(gl, program, clickX, clickY, width / 2);
-      vertexCount = getCircleVertexCount();
-    } else if (shapeType === 'triangle') {
-      vao = drawTriangle(gl, program, clickX, clickY, width, height);
-      vertexCount = 3;
-    } else {
-      vao = drawRectangle(gl, program, clickX-width/2, clickY-height/2, width, height);
-    }
-
-    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
-
-    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-
-    gl.bindVertexArray(vao);
-    gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
-
-    requestAnimationFrame(render);
-  };
+  // Convert screen coordinates to world coordinates
+  const worldPos = camera.screenToWorld(clickX, clickY);
 
   try {
-    render();
-    const { cleanup } = useDragHelper(gl, program, render);
-
-    // Add shape based on type (line is handled separately)
+    // Add shape based on type (rendering is handled by main loop)
     if (shapeType === 'circle') {
-      shapeStore.addShape(new Circle("Circle", clickX, clickY, width / 2));
+      shapeStore.addShape(new Circle("Circle", worldPos.x, worldPos.y, width / 2));
     } else if (shapeType === 'triangle') {
-      shapeStore.addShape(new Triangle("Triangle", height, width, clickX, clickY));
+      shapeStore.addShape(new Triangle("Triangle", height, width, worldPos.x, worldPos.y));
     } else {
-      shapeStore.addShape(new Shape("Rectangle", height, width, clickX, clickY, 'rectangle'));
+      shapeStore.addShape(new Shape("Rectangle", height, width, worldPos.x, worldPos.y, 'rectangle'));
     }
 
-    console.log("Shape added at position:", clickX, clickY);
+    console.log("Shape added at position:", worldPos.x, worldPos.y);
     console.log(shapeStore.shapes)
   } catch(error: any) {
-    console.log("Error rendering shape: ", error.message)
+    console.log("Error adding shape: ", error.message)
   }
 }
 
 const drawLineFromPoints = (startX: number, startY: number, endX: number, endY: number, thickness: number = 2) => {
-  const canvas = canvasref.value;
-  if (!canvas) return
+  if (!camera) return;
 
-  const gl = initializeWebGL(canvas)
-
-  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
-  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
-  var program = createProgram(gl, vertexShader, fragmentShader);
-
-  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
-  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
-
-  const render = () => {
-    resizeCanvas(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-
-    gl.useProgram(program);
-
-    const vao = drawLine(gl, program, startX, startY, endX, endY, thickness);
-    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
-
-    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-
-    gl.bindVertexArray(vao);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    requestAnimationFrame(render);
-  };
+  // Convert screen coordinates to world coordinates
+  const worldStart = camera.screenToWorld(startX, startY);
+  const worldEnd = camera.screenToWorld(endX, endY);
 
   try {
-    render();
-    const { cleanup } = useDragHelper(gl, program, render);
+    // Add line shape to store (rendering is handled by main loop)
+    shapeStore.addShape(new Line("Line", worldStart.x, worldStart.y, worldEnd.x, worldEnd.y, thickness));
 
-    // Add line shape to store
-    shapeStore.addShape(new Line("Line", startX, startY, endX, endY, thickness));
-
-    console.log("Line added from:", startX, startY, "to:", endX, endY);
+    console.log("Line added from:", worldStart.x, worldStart.y, "to:", worldEnd.x, worldEnd.y);
     console.log(shapeStore.shapes)
   } catch(error: any) {
-    console.log("Error rendering line: ", error.message)
+    console.log("Error adding line: ", error.message)
   }
 }
 
 const _drawFrameRectangle = (width: number, height: number) => {
-  const canvas = canvasref.value;
-  if (!canvas) return
+  if (!camera || !canvasref.value) return;
 
-  const gl = initializeWebGL(canvas)
-
-  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
-  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
-  var program = createProgram(gl, vertexShader, fragmentShader);
-
-  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
-  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
-  // var colorLocation = gl.getUniformLocation(program, "u_color");
-
-  const color = [1, 1, 1, 1];
-  
-
+  // Get center of viewport in screen coordinates
   const windowWidthCenter = window.innerWidth / 2;
   const windowHeightCenter = window.innerHeight / 2;
 
-  const render = () => {
-    resizeCanvas(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-    // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    gl.useProgram(program);
-    const vao = drawRectangle(gl, program, windowWidthCenter-width/2, windowHeightCenter-height/2, width, height) // Center of the shape here
-    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
-
-    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-
-    // Pass camera view matrix
-    // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
-
-    gl.bindVertexArray(vao);
-    // gl.uniform4fv(colorLocation, color); // This is to set color, will change later on to be more dynamic
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    // Re-render on changes (add watch later for reactivity)
-    requestAnimationFrame(render);
-  };
+  // Convert to world coordinates
+  const worldPos = camera.screenToWorld(windowWidthCenter, windowHeightCenter);
 
   try {
-    render();
-    const { cleanup } = useDragHelper(gl, program, render);
+    // Add shape (rendering is handled by main loop)
     shapeStore.addShape(new Shape(
       "Rectangle",
       height,
       width,
-      windowWidthCenter,
-      windowHeightCenter,
+      worldPos.x,
+      worldPos.y,
       'rectangle'
     ));
     console.log(shapeStore.shapes)
   } catch(error: any) {
-    console.log("Error rendering shape: ", error.message)
+    console.log("Error adding shape: ", error.message)
   }
-
 }
 
 const deleteShape = (id: string) => {
-  const canvas = canvasref.value;
-  if (!canvas) return
-
-  const gl = initializeWebGL(canvas)
-
-  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
-  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
-  var program = createProgram(gl, vertexShader, fragmentShader);
-
-  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
-  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
-
-  shapeStore.removeShape(id)
-
-  if (Object.keys(shapeStore.shapes).length == 0) {
-    const rerender = () => {
-      resizeCanvas(gl.canvas);
-      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.useProgram(program);
-      updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
-      gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-      requestAnimationFrame(rerender);
-    }
-    rerender()
-  }
-
-  if (Object.keys(shapeStore.shapes).length > 0) {
-    console.log("Shapes exist")
-    console.log(shapeStore.shapes)
-    for (const key in shapeStore.shapes) {
-      const render = () => {
-        const shape = shapeStore.shapes[key];
-        const shapeHeight = shape.height;
-        const shapeWidth = shape.width;
-        const shapeX = shape.coordX;
-        const shapeY = shape.coordY;
-        const shapeType = shape.type || 'rectangle';
-
-        resizeCanvas(gl.canvas);
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        gl.clearColor(0, 0, 0, 0);
-        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-        gl.useProgram(program);
-
-        let vao;
-        let vertexCount = 6;
-
-        // Draw based on shape type
-        if (shapeType === 'circle') {
-          vao = drawCircle(gl, program, shapeX, shapeY, shapeWidth / 2);
-          vertexCount = getCircleVertexCount();
-        } else if (shapeType === 'triangle') {
-          vao = drawTriangle(gl, program, shapeX, shapeY, shapeWidth, shapeHeight);
-          vertexCount = 3;
-        } else if (shapeType === 'line') {
-          const lineShape = shape as any; // Cast to access line-specific properties
-          if (lineShape.startX !== undefined) {
-            vao = drawLine(gl, program, lineShape.startX, lineShape.startY, lineShape.endX, lineShape.endY, lineShape.thickness || 2);
-          } else {
-            // Fallback for old line format
-            vao = drawLine(gl, program, shapeX - shapeWidth/2, shapeY, shapeX + shapeWidth/2, shapeY, shape.height);
-          }
-          vertexCount = 6;
-        } else {
-          vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
-        }
-
-        updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
-        gl.bindVertexArray(vao);
-
-        gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-
-        // Pass camera view matrix
-        // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
-
-        // gl.uniform4fv(colorLocation, color);
-        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
-        requestAnimationFrame(render);
-      }
-      render()
-      const { cleanup } = useDragHelper(gl, program, render);
-    }
-  }
+  // Simply remove the shape - the unified render loop will handle the rest
+  shapeStore.removeShape(id);
+  console.log("Shape deleted:", id);
 }
 
 const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number) => {
-  const canvas = canvasref.value
-  if (!canvas) return
-
-  const gl = initializeWebGL(canvas)
-
-  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
-  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
-  var program = createProgram(gl, vertexShader, fragmentShader);
-
-  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
-  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
-
+  // Simply update the shape properties - the unified render loop will handle rendering
   shapeStore.editShape(shapeStore.select_shape, {
     coordX: Number(coordX), coordY: Number(coordY),
     width: Number(sizeWidth), height: Number(sizeHeight)
-  })
+  });
 
   const shape = shapeStore.shapes[shapeStore.select_shape];
-
-  console.log("new shape")
-  console.log(shape)
-
-  const render = () => {
-    resizeCanvas(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-    // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    gl.useProgram(program);
-
-    const shapeType = shape.type || 'rectangle';
-    let vao;
-    let vertexCount = 6;
-
-    // Draw based on shape type
-    if (shapeType === 'circle') {
-      vao = drawCircle(gl, program, shape.coordX, shape.coordY, shape.width / 2);
-      vertexCount = getCircleVertexCount();
-    } else if (shapeType === 'triangle') {
-      vao = drawTriangle(gl, program, shape.coordX, shape.coordY, shape.width, shape.height);
-      vertexCount = 3;
-    } else if (shapeType === 'line') {
-      vao = drawLine(gl, program, shape.coordX, shape.coordY, shape.width, shape.height, 45);
-      vertexCount = 6;
-    } else {
-      vao = drawRectangle(gl, program, shape.coordX-shape.width/2, shape.coordY-shape.height/2, shape.width, shape.height);
-    }
-
-    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
-
-    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-
-    // Pass camera view matrix
-    // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
-
-    gl.bindVertexArray(vao);
-    // gl.uniform4fv(colorLocation, color); // This is to set color, will change later on to be more dynamic
-    gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
-
-    // Re-render on changes (add watch later for reactivity)
-    requestAnimationFrame(render);
-  };
-
-  render()
-  const { cleanup } = useDragHelper(gl, program, render);
+  console.log("Shape properties updated:");
+  console.log(shape);
 }
 
 
