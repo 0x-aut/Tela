@@ -19,6 +19,8 @@ import vertexshader from '../../utils/shadersglsl/webgl/vertexshader.vert?raw';
 import fragmentshader from '~/utils/shadersglsl/webgl/fragmentshader.frag?raw';
 import { useGlobalStore } from '../../stores/global';
 import { useShapeStore } from '../../stores/shapeStore';
+import { useActionStateStore } from '../../stores/actionstates';
+import { ActionState } from '../../shared/types/ActionState';
 import { Shape } from '../../shared/types/ShapeTypes/Shape';
 
 definePageMeta({
@@ -27,6 +29,7 @@ definePageMeta({
 
 const globalStore = useGlobalStore();
 const shapeStore = useShapeStore();
+const actionStateStore = useActionStateStore();
 var cursor_position = ref('0,0');
 const canvasref = ref<HTMLCanvasElement | null>(null);
 
@@ -53,6 +56,24 @@ onMounted(() => {
 
   const color = [0.9, 0.9, 0.9, 1];
   // globalStore.deleteTrans();
+
+  // Add canvas click event handler for drawing shapes
+  const handleCanvasClick = (event: MouseEvent) => {
+    if (actionStateStore.action_state === ActionState.DRAWSHAPE) {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const clickY = event.clientY - rect.top;
+
+      // Default rectangle dimensions
+      const defaultWidth = 100;
+      const defaultHeight = 100;
+
+      // Draw rectangle at click position
+      drawRectangleAtPosition(clickX, clickY, defaultWidth, defaultHeight);
+    }
+  };
+
+  canvas.addEventListener('click', handleCanvasClick);
 
   if (Object.keys(shapeStore.shapes).length > 0) {
     console.log("Shapes exist")
@@ -87,16 +108,63 @@ onMounted(() => {
       render()
       const { cleanup } = useDragHelper(gl, program, render);
     }
-    
+
   } else {
     console.log("No shapes to render")
     console.log(shapeStore.shapes)
   }
 
-  // onUnmounted(() => {
-  //   // gl.canvas.removeEventListener('mousemove', mousemove)
-  // })
+  onUnmounted(() => {
+    canvas.removeEventListener('click', handleCanvasClick);
+  })
 })
+
+const drawRectangleAtPosition = (clickX: number, clickY: number, width: number, height: number) => {
+  const canvas = canvasref.value;
+  if (!canvas) return
+
+  const gl = initializeWebGL(canvas)
+
+  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
+  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
+  var program = createProgram(gl, vertexShader, fragmentShader);
+
+  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
+
+  const render = () => {
+    resizeCanvas(gl.canvas);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+
+    gl.useProgram(program);
+    const vao = drawRectangle(gl, program, clickX-width/2, clickY-height/2, width, height);
+    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+
+    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+    gl.bindVertexArray(vao);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    requestAnimationFrame(render);
+  };
+
+  try {
+    render();
+    const { cleanup } = useDragHelper(gl, program, render);
+    shapeStore.addShape(new Shape(
+      "Rectangle",
+      height,
+      width,
+      clickX,
+      clickY,
+    ));
+    console.log("Shape added at position:", clickX, clickY);
+    console.log(shapeStore.shapes)
+  } catch(error: any) {
+    console.log("Error rendering shape: ", error.message)
+  }
+}
 
 const _drawFrameRectangle = (width: number, height: number) => {
   const canvas = canvasref.value;
