@@ -5,7 +5,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { initializeWebGL } from '../../utils/webgl/initwebgl';
 import { setupBuffer } from '../../utils/webgl/setbuffer';
 import { resizeCanvas } from '../../utils/webgl/resizecanvas';
-import { 
+import {
   createShader, createProgram,
   getShaderLogs, getProgramLogs,
   deleteShader, deleteProgram
@@ -31,20 +31,182 @@ import { Shape } from '../../shared/types/ShapeTypes/Shape';
 import { Circle } from '../../shared/types/ShapeTypes/Circle';
 import { Triangle } from '../../shared/types/ShapeTypes/Triangle';
 import { Line } from '../../shared/types/ShapeTypes/Line';
+import { useSession } from '../../lib/auth-client';
+import { useQuery, useMutation } from 'convex-vue';
+import { api } from '../../../convex/_generated/api';
 
 definePageMeta({
   layout: "none",
 })
 
+const route = useRoute();
 const globalStore = useGlobalStore();
 const shapeStore = useShapeStore();
 const actionStateStore = useActionStateStore();
+const { data: session } = useSession();
 var cursor_position = ref('0,0');
 const canvasref = ref<HTMLCanvasElement | null>(null);
 
+// Convex integration
+const designFileId = ref<string | null>(null);
+const shareLink = ref<string>(route.params.id as string);
+
+// Get or create design file
+const designFileByOwner = useQuery(
+  api.designFiles.getDesignFileByOwner,
+  session.value?.user?.email ? { ownerId: session.value.user.email } : 'skip'
+);
+
+const designFileByShareLink = useQuery(
+  api.designFiles.getDesignFileByShareLink,
+  shareLink.value ? { shareLink: shareLink.value } : 'skip'
+);
+
+const createDesignFile = useMutation(api.designFiles.createDesignFile);
+const updateShapes = useMutation(api.designFiles.updateShapes);
 
 
-onMounted(() => {
+
+// Initialize design file and load shapes
+const initializeDesignFile = async () => {
+  if (!session.value?.user?.email) return;
+
+  // Try to get design file by share link first
+  if (designFileByShareLink.value) {
+    designFileId.value = designFileByShareLink.value._id;
+    // Load shapes from Convex into store
+    loadShapesFromConvex(designFileByShareLink.value.shapes);
+    return;
+  }
+
+  // Otherwise get or create by owner
+  if (designFileByOwner.value) {
+    designFileId.value = designFileByOwner.value._id;
+    shareLink.value = designFileByOwner.value.shareLink;
+    // Load shapes from Convex into store
+    loadShapesFromConvex(designFileByOwner.value.shapes);
+  } else {
+    // Create new design file
+    const result = await createDesignFile({
+      ownerId: session.value.user.email,
+      ownerName: session.value.user.name || session.value.user.email,
+      title: 'Untitled Design',
+    });
+    designFileId.value = result.designFileId;
+    shareLink.value = result.shareLink;
+    // Update route to use new share link
+    navigateTo(`/design/${result.shareLink}`, { replace: true });
+  }
+};
+
+// Load shapes from Convex into the shape store
+const loadShapesFromConvex = (shapes: any[]) => {
+  shapeStore.deleteAllShapes();
+  shapes.forEach((shapeData) => {
+    // Reconstruct shape objects based on type
+    if (shapeData.type === 'circle') {
+      const circle = new Circle(
+        shapeData.id,
+        shapeData.coordX,
+        shapeData.coordY,
+        shapeData.width / 2
+      );
+      shapeStore.shapes[`${shapeData.id}`] = circle;
+    } else if (shapeData.type === 'triangle') {
+      const triangle = new Triangle(
+        shapeData.id,
+        shapeData.height,
+        shapeData.width,
+        shapeData.coordX,
+        shapeData.coordY
+      );
+      shapeStore.shapes[`${shapeData.id}`] = triangle;
+    } else if (shapeData.type === 'line' && shapeData.startX !== undefined) {
+      const line = new Line(
+        shapeData.id,
+        shapeData.startX,
+        shapeData.startY!,
+        shapeData.endX!,
+        shapeData.endY!,
+        shapeData.thickness || 2
+      );
+      shapeStore.shapes[`${shapeData.id}`] = line;
+    } else {
+      const shape = new Shape(
+        shapeData.id,
+        shapeData.height,
+        shapeData.width,
+        shapeData.coordX,
+        shapeData.coordY,
+        shapeData.type
+      );
+      shapeStore.shapes[`${shapeData.id}`] = shape;
+    }
+  });
+};
+
+// Save shapes to Convex (debounced)
+let saveTimeout: NodeJS.Timeout | null = null;
+const saveShapesToConvex = () => {
+  if (!designFileId.value) return;
+
+  // Clear previous timeout
+  if (saveTimeout) clearTimeout(saveTimeout);
+
+  // Debounce saves by 2 seconds
+  saveTimeout = setTimeout(async () => {
+    const shapesArray = Object.values(shapeStore.shapes).map((shape) => {
+      const baseShape: any = {
+        id: shape.id,
+        type: shape.type,
+        height: shape.height,
+        width: shape.width,
+        coordX: shape.coordX,
+        coordY: shape.coordY,
+      };
+
+      // Add line-specific properties
+      if (shape.type === 'line') {
+        const lineShape = shape as any;
+        if (lineShape.startX !== undefined) {
+          baseShape.startX = lineShape.startX;
+          baseShape.startY = lineShape.startY;
+          baseShape.endX = lineShape.endX;
+          baseShape.endY = lineShape.endY;
+          baseShape.thickness = lineShape.thickness || 2;
+        }
+      }
+
+      return baseShape;
+    });
+
+    try {
+      await updateShapes({
+        designFileId: designFileId.value as any,
+        shapes: shapesArray,
+      });
+      console.log('Shapes saved to Convex');
+    } catch (error) {
+      console.error('Failed to save shapes:', error);
+    }
+  }, 2000);
+};
+
+// Watch for shape changes to trigger save
+watch(
+  () => shapeStore.shapes,
+  () => {
+    saveShapesToConvex();
+  },
+  { deep: true }
+);
+
+onMounted(async () => {
+  // Wait for session and initialize design file
+  if (session.value?.user?.email) {
+    await initializeDesignFile();
+  }
+
   const canvas = canvasref.value;
   if (!canvas) {
     throw new Error("Canvas not found")
@@ -286,7 +448,11 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
 <template>
   <main class="design-page">
     <div class="share" v-if="globalStore.shared_state.state">
-      <ToastsShare />
+      <ToastsShare
+        v-if="designFileId && shareLink"
+        :designFileId="designFileId"
+        :shareLink="shareLink"
+      />
     </div>
     <div class="page-details-part">
       <DesignPageDetail
@@ -295,13 +461,14 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
     </div>
     <div class="element-property-part">
       <DesignElementProperties
+        :designFileId="designFileId"
         @draw-frameRectangle="_drawFrameRectangle"
         @editProperties="editProperties"
       />
     </div>
     <canvas
-      class="gfx-main" 
-      ref="canvasref" 
+      class="gfx-main"
+      ref="canvasref"
       id="c"
     ></canvas>
     <div class="action-menu-part">

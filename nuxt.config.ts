@@ -5,7 +5,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     connection_string: process.env.CONNECTION_STRING,
-    better_auth_secret: process.env.BETTER_AUTH_SECRET
+    better_auth_secret: process.env.BETTER_AUTH_SECRET,
+    resendApiKey: process.env.RESEND_API_KEY
   },
 
   css: [
