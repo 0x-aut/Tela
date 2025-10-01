@@ -4,10 +4,80 @@ import { useActionStateStore } from '../../stores/actionstates';
 import { ActionState } from '../../shared/types/ActionState';
 import { useSession } from '../../lib/auth-client';
 import { useGlobalStore } from '../../stores/global';
+import { computed, onMounted, onUnmounted } from 'vue';
+import { useQuery, useMutation } from 'convex-vue';
+import { api } from '../../../convex/_generated/api';
 
+const props = defineProps<{
+  designFileId?: string;
+}>();
 
 const actionStateStore = useActionStateStore();
 const globalStore = useGlobalStore();
+const { data: session } = useSession();
+
+// Get user initial from session
+const userInitial = computed(() => {
+  if (session.value?.user?.name) {
+    return session.value.user.name.charAt(0).toUpperCase();
+  }
+  if (session.value?.user?.email) {
+    return session.value.user.email.charAt(0).toUpperCase();
+  }
+  return 'U';
+});
+
+// Get active collaborators
+const activeCollaborators = useQuery(
+  api.designFiles.getActiveCollaborators,
+  props.designFileId ? { designFileId: props.designFileId as any } : 'skip'
+);
+
+const markActive = useMutation(api.designFiles.markCollaboratorActive);
+
+// Mark user as active periodically
+let activeInterval: NodeJS.Timeout | null = null;
+
+onMounted(() => {
+  if (props.designFileId && session.value?.user?.email) {
+    // Mark active immediately
+    markActive({
+      designFileId: props.designFileId as any,
+      email: session.value.user.email,
+      name: session.value.user.name || session.value.user.email,
+    });
+
+    // Mark active every 15 seconds
+    activeInterval = setInterval(() => {
+      if (session.value?.user?.email) {
+        markActive({
+          designFileId: props.designFileId as any,
+          email: session.value.user.email,
+          name: session.value.user.name || session.value.user.email,
+        });
+      }
+    }, 15000);
+  }
+});
+
+onUnmounted(() => {
+  if (activeInterval) {
+    clearInterval(activeInterval);
+  }
+});
+
+// Generate color for avatar based on email
+const getAvatarColor = (email: string) => {
+  const colors = ['#FF7237', '#0D99FF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+  const hash = email.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+};
+
+// Filter out current user from active collaborators
+const otherCollaborators = computed(() => {
+  if (!activeCollaborators.value || !session.value?.user?.email) return [];
+  return activeCollaborators.value.filter(c => c.email !== session.value.user.email);
+});
 
 // There will be another order magnitude emit here to go to the parent [id].vue
 const emit = defineEmits<{
@@ -36,7 +106,28 @@ const openShare = () => {
     <div class="account-share-header">
       <div class="profile-wrapper">
         <div class="profiles">
-          <div class="profile geist-medium">M</div>
+          <!-- Current user profile -->
+          <div
+            class="profile geist-medium"
+            :style="{ background: getAvatarColor(session?.user?.email || 'default') }"
+            :title="session?.user?.name || session?.user?.email"
+          >
+            {{ userInitial }}
+          </div>
+          <!-- Active collaborators -->
+          <div
+            v-for="(collaborator, index) in otherCollaborators.slice(0, 3)"
+            :key="collaborator.email"
+            class="profile geist-medium"
+            :style="{
+              background: getAvatarColor(collaborator.email),
+              marginLeft: '-15px',
+              zIndex: 10 - index
+            }"
+            :title="collaborator.name"
+          >
+            {{ collaborator.name.charAt(0).toUpperCase() }}
+          </div>
         </div>
         <button class="profile-icon">
           <ChevronDown
@@ -117,20 +208,18 @@ const openShare = () => {
       .profiles {
         display: flex;
         position: relative;
-        .profile:nth-child(n) {
+        .profile {
           width: 32px;
           height: 32px;
           border-radius: 50%;
-          background: #FF7237;
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: normal;
           font-size: 16px;
           color: #FFFFFF;
-        }
-        .profile:nth-child(2) {
-          margin-left: -15px;
+          border: 2px solid #2C2C2C;
+          position: relative;
         }
       }
       .profile-icon {
