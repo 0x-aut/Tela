@@ -223,7 +223,7 @@ onMounted(async () => {
 
   const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
   const viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
-  // var colorLocation = gl.getUniformLocation(program, "u_color");
+  const colorLocation = gl.getUniformLocation(program, "u_color");
 
   // Create border shader program
   var borderVShader = createShader(gl, gl.VERTEX_SHADER, borderVertexShader);
@@ -300,6 +300,7 @@ onMounted(async () => {
       const shapeX = shape.coordX;
       const shapeY = shape.coordY;
       const shapeType = shape.type || 'rectangle';
+      const shapeColor = shape.color || [1.0, 1.0, 1.0, 1.0];
 
       gl.useProgram(program);
 
@@ -328,6 +329,7 @@ onMounted(async () => {
       updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation);
       gl.bindVertexArray(vao);
       gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+      gl.uniform4fv(colorLocation, shapeColor);
       gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
 
       // Draw blue border if shape is hovered
@@ -431,10 +433,11 @@ const deleteShape = (id: string) => {
   console.log("Shape removed:", id);
 }
 
-const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number) => {
+const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeHeight: number, color: number[]) => {
   shapeStore.editShape(shapeStore.select_shape, {
     coordX: Number(coordX), coordY: Number(coordY),
-    width: Number(sizeWidth), height: Number(sizeHeight)
+    width: Number(sizeWidth), height: Number(sizeHeight),
+    color: color
   });
 
   const shape = shapeStore.shapes[shapeStore.select_shape];
