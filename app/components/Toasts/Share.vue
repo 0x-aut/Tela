@@ -14,14 +14,17 @@ var second_access = ref("");
 var third_access = ref("");
 
 
-const handleOutsideClick = (event) => {
+const handleOutsideClick = (event: MouseEvent) => {
   if (shareWrapper.value && !shareWrapper.value.contains(event.target as Node)) {
     globalStore.changeShareOpen({ state: false });
   }
 };
 
 onMounted(() => {
-  document.addEventListener('click', handleOutsideClick);
+  // Use setTimeout to ensure the click event that opened the modal doesn't immediately close it
+  setTimeout(() => {
+    document.addEventListener('click', handleOutsideClick);
+  }, 0);
 });
 onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick);
@@ -30,7 +33,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="share-wrapper" ref="shareWrapper">
+  <div class="share-wrapper" ref="shareWrapper" @click.stop>
     <section class="share-link-header">
       <span class="geist-regular header">Invite collaborators</span>
       <button class="copy-link-button">
