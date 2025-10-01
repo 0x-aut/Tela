@@ -11,6 +11,9 @@ import {
   deleteShader, deleteProgram
 } from '../../utils/webgl/shaders';
 import { drawRectangle } from '../../utils/shapes/rectangle';
+import { drawCircle, getCircleVertexCount } from '../../utils/shapes/circle';
+import { drawTriangle } from '../../utils/shapes/triangle';
+import { drawLine } from '../../utils/shapes/line';
 import { updateUniforms } from '../../utils/webgl/render';
 import { Camera } from '../../utils/webgl/camera';
 import { useCameraInput } from '../../composables/useCameraInput';
@@ -22,6 +25,9 @@ import { useShapeStore } from '../../stores/shapeStore';
 import { useActionStateStore } from '../../stores/actionstates';
 import { ActionState } from '../../shared/types/ActionState';
 import { Shape } from '../../shared/types/ShapeTypes/Shape';
+import { Circle } from '../../shared/types/ShapeTypes/Circle';
+import { Triangle } from '../../shared/types/ShapeTypes/Triangle';
+import { Line } from '../../shared/types/ShapeTypes/Line';
 
 definePageMeta({
   layout: "none",
@@ -57,6 +63,11 @@ onMounted(() => {
   const color = [0.9, 0.9, 0.9, 1];
   // globalStore.deleteTrans();
 
+  // Track line drawing state
+  let isDrawingLine = false;
+  let lineStartX = 0;
+  let lineStartY = 0;
+
   // Add canvas click event handler for drawing shapes
   const handleCanvasClick = (event: MouseEvent) => {
     if (actionStateStore.action_state === ActionState.DRAWSHAPE) {
@@ -64,26 +75,52 @@ onMounted(() => {
       const clickX = event.clientX - rect.left;
       const clickY = event.clientY - rect.top;
 
-      // Default rectangle dimensions
-      const defaultWidth = 100;
-      const defaultHeight = 100;
+      // Special handling for line: click-and-drag
+      if (actionStateStore.selectedShape === 'line') {
+        if (!isDrawingLine) {
+          // Start drawing line
+          isDrawingLine = true;
+          lineStartX = clickX;
+          lineStartY = clickY;
+        }
+      } else {
+        // Default shape dimensions for other shapes
+        const defaultSize = 100;
+        // Draw shape at click position based on selected shape type
+        drawShapeAtPosition(clickX, clickY, defaultSize, defaultSize, actionStateStore.selectedShape);
+      }
+    }
+  };
 
-      // Draw rectangle at click position
-      drawRectangleAtPosition(clickX, clickY, defaultWidth, defaultHeight);
+  // Add mouse up handler for line drawing
+  const handleCanvasMouseUp = (event: MouseEvent) => {
+    if (actionStateStore.action_state === ActionState.DRAWSHAPE &&
+        actionStateStore.selectedShape === 'line' &&
+        isDrawingLine) {
+      const rect = canvas.getBoundingClientRect();
+      const endX = event.clientX - rect.left;
+      const endY = event.clientY - rect.top;
+
+      // Draw line from start to end
+      drawLineFromPoints(lineStartX, lineStartY, endX, endY);
+      isDrawingLine = false;
     }
   };
 
   canvas.addEventListener('click', handleCanvasClick);
+  canvas.addEventListener('mouseup', handleCanvasMouseUp);
 
   if (Object.keys(shapeStore.shapes).length > 0) {
     console.log("Shapes exist")
     console.log(shapeStore.shapes)
     for (const key in shapeStore.shapes) {
       const render = () => {
-        const shapeHeight = shapeStore.shapes[key].height;
-        const shapeWidth = shapeStore.shapes[key].width;
-        const shapeX = shapeStore.shapes[key].coordX;
-        const shapeY = shapeStore.shapes[key].coordY;
+        const shape = shapeStore.shapes[key];
+        const shapeHeight = shape.height;
+        const shapeWidth = shape.width;
+        const shapeX = shape.coordX;
+        const shapeY = shape.coordY;
+        const shapeType = shape.type || 'rectangle';
 
         resizeCanvas(gl.canvas);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -91,7 +128,29 @@ onMounted(() => {
         // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         gl.useProgram(program);
-        const vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
+
+        let vao;
+        let vertexCount = 6;
+
+        // Draw based on shape type
+        if (shapeType === 'circle') {
+          vao = drawCircle(gl, program, shapeX, shapeY, shapeWidth / 2);
+          vertexCount = getCircleVertexCount();
+        } else if (shapeType === 'triangle') {
+          vao = drawTriangle(gl, program, shapeX, shapeY, shapeWidth, shapeHeight);
+          vertexCount = 3;
+        } else if (shapeType === 'line') {
+          const lineShape = shape as any; // Cast to access line-specific properties
+          if (lineShape.startX !== undefined) {
+            vao = drawLine(gl, program, lineShape.startX, lineShape.startY, lineShape.endX, lineShape.endY, lineShape.thickness || 2);
+          } else {
+            // Fallback for old line format
+            vao = drawLine(gl, program, shapeX - shapeWidth/2, shapeY, shapeX + shapeWidth/2, shapeY, shape.height);
+          }
+          vertexCount = 6;
+        } else {
+          vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
+        }
 
         updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
         gl.bindVertexArray(vao);
@@ -102,7 +161,7 @@ onMounted(() => {
         // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
 
         // gl.uniform4fv(colorLocation, color);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
         requestAnimationFrame(render);
       }
       render()
@@ -116,10 +175,11 @@ onMounted(() => {
 
   onUnmounted(() => {
     canvas.removeEventListener('click', handleCanvasClick);
+    canvas.removeEventListener('mouseup', handleCanvasMouseUp);
   })
 })
 
-const drawRectangleAtPosition = (clickX: number, clickY: number, width: number, height: number) => {
+const drawShapeAtPosition = (clickX: number, clickY: number, width: number, height: number, shapeType: string = 'rectangle') => {
   const canvas = canvasref.value;
   if (!canvas) return
 
@@ -138,7 +198,72 @@ const drawRectangleAtPosition = (clickX: number, clickY: number, width: number, 
     gl.clearColor(0, 0, 0, 0);
 
     gl.useProgram(program);
-    const vao = drawRectangle(gl, program, clickX-width/2, clickY-height/2, width, height);
+
+    let vao;
+    let vertexCount = 6;
+
+    // Draw based on shape type (line is handled separately with drawLineFromPoints)
+    if (shapeType === 'circle') {
+      vao = drawCircle(gl, program, clickX, clickY, width / 2);
+      vertexCount = getCircleVertexCount();
+    } else if (shapeType === 'triangle') {
+      vao = drawTriangle(gl, program, clickX, clickY, width, height);
+      vertexCount = 3;
+    } else {
+      vao = drawRectangle(gl, program, clickX-width/2, clickY-height/2, width, height);
+    }
+
+    updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
+
+    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+    gl.bindVertexArray(vao);
+    gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+
+    requestAnimationFrame(render);
+  };
+
+  try {
+    render();
+    const { cleanup } = useDragHelper(gl, program, render);
+
+    // Add shape based on type (line is handled separately)
+    if (shapeType === 'circle') {
+      shapeStore.addShape(new Circle("Circle", clickX, clickY, width / 2));
+    } else if (shapeType === 'triangle') {
+      shapeStore.addShape(new Triangle("Triangle", height, width, clickX, clickY));
+    } else {
+      shapeStore.addShape(new Shape("Rectangle", height, width, clickX, clickY, 'rectangle'));
+    }
+
+    console.log("Shape added at position:", clickX, clickY);
+    console.log(shapeStore.shapes)
+  } catch(error: any) {
+    console.log("Error rendering shape: ", error.message)
+  }
+}
+
+const drawLineFromPoints = (startX: number, startY: number, endX: number, endY: number, thickness: number = 2) => {
+  const canvas = canvasref.value;
+  if (!canvas) return
+
+  const gl = initializeWebGL(canvas)
+
+  var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexshader);
+  var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentshader);
+  var program = createProgram(gl, vertexShader, fragmentShader);
+
+  var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+  var viewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
+
+  const render = () => {
+    resizeCanvas(gl.canvas);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+
+    gl.useProgram(program);
+
+    const vao = drawLine(gl, program, startX, startY, endX, endY, thickness);
     updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
 
     gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
@@ -152,17 +277,14 @@ const drawRectangleAtPosition = (clickX: number, clickY: number, width: number, 
   try {
     render();
     const { cleanup } = useDragHelper(gl, program, render);
-    shapeStore.addShape(new Shape(
-      "Rectangle",
-      height,
-      width,
-      clickX,
-      clickY,
-    ));
-    console.log("Shape added at position:", clickX, clickY);
+
+    // Add line shape to store
+    shapeStore.addShape(new Line("Line", startX, startY, endX, endY, thickness));
+
+    console.log("Line added from:", startX, startY, "to:", endX, endY);
     console.log(shapeStore.shapes)
   } catch(error: any) {
-    console.log("Error rendering shape: ", error.message)
+    console.log("Error rendering line: ", error.message)
   }
 }
 
@@ -215,9 +337,10 @@ const _drawFrameRectangle = (width: number, height: number) => {
     shapeStore.addShape(new Shape(
       "Rectangle",
       height,
-      width,  
+      width,
       windowWidthCenter,
       windowHeightCenter,
+      'rectangle'
     ));
     console.log(shapeStore.shapes)
   } catch(error: any) {
@@ -260,10 +383,12 @@ const deleteShape = (id: string) => {
     console.log(shapeStore.shapes)
     for (const key in shapeStore.shapes) {
       const render = () => {
-        const shapeHeight = shapeStore.shapes[key].height;
-        const shapeWidth = shapeStore.shapes[key].width;
-        const shapeX = shapeStore.shapes[key].coordX;
-        const shapeY = shapeStore.shapes[key].coordY;
+        const shape = shapeStore.shapes[key];
+        const shapeHeight = shape.height;
+        const shapeWidth = shape.width;
+        const shapeX = shape.coordX;
+        const shapeY = shape.coordY;
+        const shapeType = shape.type || 'rectangle';
 
         resizeCanvas(gl.canvas);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -271,7 +396,29 @@ const deleteShape = (id: string) => {
         // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         gl.useProgram(program);
-        const vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
+
+        let vao;
+        let vertexCount = 6;
+
+        // Draw based on shape type
+        if (shapeType === 'circle') {
+          vao = drawCircle(gl, program, shapeX, shapeY, shapeWidth / 2);
+          vertexCount = getCircleVertexCount();
+        } else if (shapeType === 'triangle') {
+          vao = drawTriangle(gl, program, shapeX, shapeY, shapeWidth, shapeHeight);
+          vertexCount = 3;
+        } else if (shapeType === 'line') {
+          const lineShape = shape as any; // Cast to access line-specific properties
+          if (lineShape.startX !== undefined) {
+            vao = drawLine(gl, program, lineShape.startX, lineShape.startY, lineShape.endX, lineShape.endY, lineShape.thickness || 2);
+          } else {
+            // Fallback for old line format
+            vao = drawLine(gl, program, shapeX - shapeWidth/2, shapeY, shapeX + shapeWidth/2, shapeY, shape.height);
+          }
+          vertexCount = 6;
+        } else {
+          vao = drawRectangle(gl, program, shapeX-shapeWidth/2, shapeY-shapeHeight/2, shapeWidth, shapeHeight);
+        }
 
         updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
         gl.bindVertexArray(vao);
@@ -282,7 +429,7 @@ const deleteShape = (id: string) => {
         // gl.uniformMatrix3fv(viewMatrixLocation, false, camera.getViewMatrix());
 
         // gl.uniform4fv(colorLocation, color);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
         requestAnimationFrame(render);
       }
       render()
@@ -321,7 +468,25 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
     // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     gl.useProgram(program);
-    const vao = drawRectangle(gl, program, shape.coordX-shape.width/2, shape.coordY-shape.height/2, shape.width, shape.height) // Center of the shape here
+
+    const shapeType = shape.type || 'rectangle';
+    let vao;
+    let vertexCount = 6;
+
+    // Draw based on shape type
+    if (shapeType === 'circle') {
+      vao = drawCircle(gl, program, shape.coordX, shape.coordY, shape.width / 2);
+      vertexCount = getCircleVertexCount();
+    } else if (shapeType === 'triangle') {
+      vao = drawTriangle(gl, program, shape.coordX, shape.coordY, shape.width, shape.height);
+      vertexCount = 3;
+    } else if (shapeType === 'line') {
+      vao = drawLine(gl, program, shape.coordX, shape.coordY, shape.width, shape.height, 45);
+      vertexCount = 6;
+    } else {
+      vao = drawRectangle(gl, program, shape.coordX-shape.width/2, shape.coordY-shape.height/2, shape.width, shape.height);
+    }
+
     updateUniforms(gl, resolutionUniformLocation, viewMatrixLocation)
 
     gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
@@ -331,7 +496,7 @@ const editProperties = (coordX: number, coordY: number, sizeWidth: number, sizeH
 
     gl.bindVertexArray(vao);
     // gl.uniform4fv(colorLocation, color); // This is to set color, will change later on to be more dynamic
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
 
     // Re-render on changes (add watch later for reactivity)
     requestAnimationFrame(render);
