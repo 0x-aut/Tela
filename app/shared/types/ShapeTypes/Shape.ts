@@ -5,7 +5,7 @@ export class Shape {
   width: number
   coordX: number
   coordY: number
-  color: string
+  color: number[]
 
   constructor(
     id: string,
@@ -14,7 +14,7 @@ export class Shape {
     coordX: number,
     coordY: number,
     type: string = 'rectangle',
-    color: string = '#FFFFFF'
+    color: number[] = [1.0, 1.0, 1.0, 1.0]
   ) {
     this.id = id
     this.type = type
