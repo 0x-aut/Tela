@@ -4,11 +4,12 @@
 precision highp float;
 
 in vec4 inColor;
+uniform float u_opacity;
 // we need to declare an output for the fragment shader
 out vec4 outColor;
 
 void main() {
-  // Just set the output to a constant redish-purple
-  outColor = vec4(1, 1, 1, 1.0f);
+  // Use opacity uniform for alpha channel
+  outColor = vec4(1, 1, 1, u_opacity);
   // outColor = inColor;
 }
