@@ -5,14 +5,12 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     connection_string: process.env.CONNECTION_STRING,
-    better_auth_secret: process.env.BETTER_AUTH_SECRET
+    better_auth_secret: process.env.BETTER_AUTH_SECRET,
+    resend_api_key: process.env.RESEND_API_KEY,
   },
 
   css: [
     "~/assets/styles/main.scss"
   ],
-  modules: ['@nuxt/fonts', 'convex-nuxt', '@pinia/nuxt', 'pinia-plugin-persistedstate/nuxt'],
-  convex: {
-    url: process.env.CONVEX_URL
-  },
+  modules: ['@nuxt/fonts', '@pinia/nuxt', 'pinia-plugin-persistedstate/nuxt'],
 })

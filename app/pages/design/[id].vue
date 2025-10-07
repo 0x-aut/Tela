@@ -43,6 +43,9 @@ var cursor_position = ref('0,0');
 const canvasref = ref<HTMLCanvasElement | null>(null);
 
 
+// Refactoring this page is necessary
+// But for the sake of a demo it is fine
+
 
 onMounted(() => {
   const canvas = canvasref.value;

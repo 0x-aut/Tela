@@ -36,11 +36,20 @@ export const useGlobalStore = defineStore(
       far: ref(2000)
     }) // Ref is used for individual reactivity - will fact check and see perf hits later
 
+    const textbox_status = ref(false);
+    function changeAITextBoxStatus(status: boolean | null = null) {
+      if (!status) {
+        textbox_status.value = !textbox_status
+      }else {
+        textbox_status.value = status
+      }
+    }
     return { 
       cursor_position, change_pos, 
       translation, changeTranslation,
       deleteTrans,
-      changeShareOpen, shared_state
+      changeShareOpen, shared_state,
+      textbox_status, changeAITextBoxStatus
     }
   },
   {

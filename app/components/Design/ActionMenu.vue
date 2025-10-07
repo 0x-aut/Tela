@@ -3,11 +3,26 @@ import { MousePointer2, Frame, Square, ChevronDown, Type, MessageCircle, Sparkle
 import { ref, onMounted, onUnmounted } from 'vue';
 import { ActionState } from '../../shared/types/ActionState';
 import { useActionStateStore } from '../../stores/actionstates';
+import { useGlobalStore } from '../../stores/global';
 
 
+const globalStore = useGlobalStore();
 const actionStateStore = useActionStateStore();
 const isShapeDropdownOpen = ref(false);
 const dropdownRef = ref<HTMLDivElement | null>(null);
+const AITextbox = ref<HTMLDivElement| null>(null);
+
+const textBox = () => {
+  globalStore.changeAITextBoxStatus();
+  if (globalStore.textbox_status) {
+    if (!AITextBox.value) {
+      throw new Error("Textbox for AI not found")
+      return
+    }
+    AITextbox.value.style.transition = "0.2s ease";
+    // AITextbox.value.style.transition = "0.2s ease";
+  }
+}
 
 // const activeButton = computed((actionstate: ActionState) => ({
 //   active: actionStateStore.action_state === actionstate
@@ -62,7 +77,7 @@ onUnmounted(() => {
 
 <template>
   <div class="tot-action-wrapper">
-    <div class="ai-wrapper">
+    <div class="ai-wrapper" ref="AITextbox">
       <DesignTelaAITextBox />
     </div>
     <div class="actions-menu-wrapper">
