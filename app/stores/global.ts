@@ -27,14 +27,35 @@ export const useGlobalStore = defineStore(
       translation.value = [0, 0];
     }
 
+    // Camera state based on Steve Ruiz's zoom UI approach
     const camera_state = ref({
-      camFieldOfView: ref(60), // In degrees
-      camPosX: ref(0),
-      camPosY: ref(0),
-      camPosZ: ref(-200),
-      near: ref(1),
-      far: ref(2000)
-    }) // Ref is used for individual reactivity - will fact check and see perf hits later
+      x: 0, // Horizontal position on canvas
+      y: 0, // Vertical position on canvas
+      z: 1  // Zoom level (1 = 100%, 0.5 = 50%, 2 = 200%)
+    })
+
+    function setCameraState(x: number, y: number, z: number) {
+      camera_state.value = { x, y, z };
+    }
+
+    function updateCameraPosition(x: number, y: number) {
+      camera_state.value.x = x;
+      camera_state.value.y = y;
+    }
+
+    function updateCameraZoom(z: number) {
+      camera_state.value.z = z;
+    }
+
+    // Legacy 3D camera state for WebGL
+    const camera_3d_state = ref({
+      camFieldOfView: 60, // In degrees
+      camPosX: 0,
+      camPosY: 0,
+      camPosZ: -200,
+      near: 1,
+      far: 2000
+    })
 
     const textbox_status = ref(false);
     function changeAITextBoxStatus(status: boolean | null = null) {
@@ -44,11 +65,13 @@ export const useGlobalStore = defineStore(
         textbox_status.value = status
       }
     }
-    return { 
-      cursor_position, change_pos, 
+    return {
+      cursor_position, change_pos,
       translation, changeTranslation,
       deleteTrans,
       changeShareOpen, shared_state,
+      camera_state, setCameraState, updateCameraPosition, updateCameraZoom,
+      camera_3d_state,
       textbox_status, changeAITextBoxStatus
     }
   },
